@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\HasSlug;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,20 +10,21 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Post extends Model
 {
-    use HasFactory;
+    use HasFactory, HasSlug;
 
     protected $fillable = [
         'user_id',
         'category_id',
         'title',
         'slug',
-        'image',
         'content',
-        'views',
-        'is_active',
+        'is_approved',
     ];
 
-    // İlişkiler
+    protected $casts = [
+        'is_approved' => 'boolean',
+    ];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -35,7 +37,6 @@ class Post extends Model
 
     public function comments(): HasMany
     {
-        
-        return $this->hasMany(Comment::class)->where('is_approved', true);
+        return $this->hasMany(Comment::class);
     }
 }

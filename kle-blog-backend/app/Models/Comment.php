@@ -17,7 +17,10 @@ class Comment extends Model
         'is_approved',
     ];
 
-    // İlişkiler
+    protected $casts = [
+        'is_approved' => 'boolean',
+    ];
+
     public function post(): BelongsTo
     {
         return $this->belongsTo(Post::class);

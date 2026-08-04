@@ -1,31 +1,39 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\BlogApiController;
+use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\CommentController;
+use App\Http\Controllers\Api\ContractController;
+use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\ProfileController;
+use Illuminate\Support\Facades\Route;
 
-
-Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
 
-Route::get('/posts', [BlogApiController::class, 'getPosts']);
-Route::get('/categories', [BlogApiController::class, 'getCategories']);
-Route::get('/contracts', [BlogApiController::class, 'getContracts']);
+Route::get('/posts', [PostController::class, 'index']);
+Route::get('/posts/{slug}', [PostController::class, 'show']);
 
+Route::get('/categories', [CategoryController::class, 'index']);
+Route::get('/categories/{slug}', [CategoryController::class, 'show']);
+
+Route::get('/contracts', [ContractController::class, 'index']);
+Route::get('/contracts/{slug}', [ContractController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
-    // Oturumu Kapatma
+    Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
-    
-  
-    Route::post('/categories', [BlogApiController::class, 'storeCategory']);
-    
-    
-    Route::post('/comments', [BlogApiController::class, 'storeComment']);
-    Route::delete('/comments/{id}', [BlogApiController::class, 'deleteComment']);
+    Route::put('/profile', [ProfileController::class, 'update']);
 
-  
-    Route::post('/posts', [BlogApiController::class, 'storePost']);
-    Route::delete('/posts/{id}', [BlogApiController::class, 'deletePost']);
+    Route::get('/my-posts', [PostController::class, 'myPosts']);
+
+    Route::post('/posts', [PostController::class, 'store']);
+    Route::delete('/posts/{post}', [PostController::class, 'destroy']);
+
+    Route::post('/comments', [CommentController::class, 'store']);
+    Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
+
+    Route::post('/categories', [CategoryController::class, 'store']);
+    Route::put('/categories/{category}', [CategoryController::class, 'update']);
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
 });

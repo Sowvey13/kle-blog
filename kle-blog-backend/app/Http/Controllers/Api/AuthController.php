@@ -4,29 +4,42 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    
-    public function login(Request $request)
+    public function login(Request $request): JsonResponse
     {
         $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $throttleKey = Str::lower($request->input('email')).'|'.$request->ip();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
             return response()->json([
-                'message' => 'Giriş bilgileri hatalı!'
-            ], 401);
+                'message' => "Çok fazla başarısız giriş denemesi. Lütfen {$seconds} saniye sonra tekrar deneyin.",
+            ], 429);
         }
 
-        
+        if (! Auth::attempt($request->only('email', 'password'))) {
+            RateLimiter::hit($throttleKey, 60);
+            throw ValidationException::withMessages([
+                'email' => ['Girdiğiniz bilgiler kayıtlarımızla eşleşmiyor.'],
+            ]);
+        }
+
+        RateLimiter::clear($throttleKey);
+
+        /** @var User $user */
+        $user = Auth::user();
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -36,47 +49,29 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-            ]
+                'role' => $user->role->value,
+            ],
         ]);
     }
-    public function register(Request $request)
+
+    public function me(Request $request): JsonResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6|confirmed',
-        ]);
-
-        
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => 'user', 
-        ]);
-
-       
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $user = $request->user();
 
         return response()->json([
-            'success' => true,
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ]
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role->value,
         ]);
     }
 
-    
-    public function logout(Request $request)
+    public function logout(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
-            'message' => 'Başarıyla çıkış yapıldı ve token silindi.'
+            'message' => 'Başarıyla çıkış yapıldı.',
         ]);
     }
 }

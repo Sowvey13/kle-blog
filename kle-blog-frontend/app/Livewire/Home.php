@@ -2,97 +2,64 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
-use Illuminate\Support\Facades\Http;
 use App\Services\ApiService;
+use Livewire\Attributes\Url;
+use Livewire\Component;
+use Livewire\WithPagination;
 
 class Home extends Component
 {
-    public $search = '';
-    public $selectedCategoryId = null;
+    use WithPagination;
 
-   
-    public function selectCategory($categoryId)
+    public string $search = '';
+
+    #[Url]
+    public $category_id = null;
+
+    public function mount()
     {
-        $this->selectedCategoryId = $categoryId;
+        if (request()->has('category_id')) {
+            $this->category_id = request()->query('category_id');
+        }
     }
 
-   
-    public function deletePost($postId)
+    public function updatingSearch()
     {
-        if (!session()->has('user_token')) {
-            return;
-        }
-
-        $response = Http::withToken(session('user_token'))
-            ->delete("http://kle-blog-backend-app:8000/api/posts/{$postId}");
-
-        if ($response->successful()) {
-          
-            $this->dispatch('$refresh');
-        } else {
-            $this->addError('api_error', 'Yazı silinirken bir hata oluştu veya yetkiniz yok.');
-        }
+        $this->resetPage();
     }
 
     public function render()
     {
-   
-        $response = Http::get('http://kle-blog-backend-app:8000/api/categories');
-        $categoriesData = $response->json();
+        $queryParams = [
+            'page' => $this->getPage(),
+            'per_page' => 9,
+        ];
 
-        $categories = [];
-        if ($response->successful() && is_array($categoriesData)) {
-          
-            $categories = $categoriesData['data'] ?? $categoriesData;
-        }
-
-      
-        $postsResponse = ApiService::get('posts');
-        $allPosts = $postsResponse['data'] ?? ($postsResponse ?? []);
-
-      
-        $processedPosts = collect($allPosts)->map(function ($post) {
-            $canDeletePost = false;
-
-            if (session()->has('user_token') && session()->has('user_data')) {
-                $currentUser = session('user_data');
-                
-              
-                $postUserId = $post['user_id'] ?? ($post['user']['id'] ?? null);
-                
-             
-                $currentUserId = $currentUser['id'] ?? null;
-                $currentUserRole = $currentUser['role'] ?? null;
-                
-            
-                if (($currentUserId == $postUserId && !is_null($currentUserId)) || $currentUserRole === 'admin') {
-                    $canDeletePost = true;
-                }
-            }
-
-            $post['can_delete_post'] = $canDeletePost;
-            return $post;
-        });
-
-      
         if (!empty($this->search)) {
-            $processedPosts = $processedPosts->filter(function ($post) {
-                return str_contains(mb_strtolower($post['title'], 'UTF-8'), mb_strtolower($this->search, 'UTF-8')) ||
-                       str_contains(mb_strtolower($post['content'], 'UTF-8'), mb_strtolower($this->search, 'UTF-8'));
-            });
+            $queryParams['search'] = $this->search;
         }
 
-       
-        if (!is_null($this->selectedCategoryId)) {
-            $processedPosts = $processedPosts->filter(function ($post) {
-                return ($post['category_id'] ?? ($post['category']['id'] ?? null)) == $this->selectedCategoryId;
-            });
+        if (!is_null($this->category_id) && $this->category_id !== '') {
+            $queryParams['category_id'] = (int) $this->category_id;
         }
+
+        $postsResponse = ApiService::get('posts', $queryParams);
+        
+        $posts = $postsResponse['data'] ?? [];
+        $pagination = [
+            'current_page' => $postsResponse['meta']['current_page'] ?? ($postsResponse['current_page'] ?? 1),
+            'last_page' => $postsResponse['meta']['last_page'] ?? ($postsResponse['last_page'] ?? 1),
+            'total' => $postsResponse['meta']['total'] ?? ($postsResponse['total'] ?? 0),
+        ];
+
+        $categoriesResponse = ApiService::get('categories');
+        $categories = $categoriesResponse['data'] ?? ($categoriesResponse ?? []);
 
         return view('livewire.home', [
+            'posts' => $posts,
             'categories' => $categories,
-            'posts'      => $processedPosts
+            'selectedCategoryId' => $this->category_id,
+            'pagination' => $pagination,
         ])->layout('components.layouts.app');
     }
 }

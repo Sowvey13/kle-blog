@@ -2,134 +2,107 @@
 
 namespace App\Livewire;
 
-use App\Services\ApiService;
 use Livewire\Component;
+use App\Services\ApiService;
 
 class PostDetail extends Component
 {
-    public $post;
-    public $slug;
+    public string $slug = '';
+    public string $content = '';
+    public string $errorMessage = '';
+    public string $successMessage = '';
+    public ?array $post = null;
 
-    // Form modelleri
-    public $name = '';
-    public $content = '';
-
-    public $successMessage = '';
-
-    public function mount($slug)
+    public function mount(string $slug)
     {
         $this->slug = $slug;
-        $this->loadPost();
+        $this->fetchPost();
     }
 
-    public function loadPost()
+    private function fetchPost()
     {
-        $response = ApiService::get('posts');
-        $allPosts = $response['data'] ?? ($response ?? []);
-
-        $rawPost = collect($allPosts)->firstWhere('slug', $this->slug);
-
-        if (!$rawPost) {
-            abort(404);
+        try {
+            $response = ApiService::get('posts/' . $this->slug);
+            $this->post = $response['data'] ?? ($response ?? null);
+        } catch (\Exception $e) {
+            $this->post = null;
         }
-
-        if (isset($rawPost['comments']) && is_array($rawPost['comments'])) {
-            foreach ($rawPost['comments'] as $key => $comment) {
-                $contentStr = $comment['content'] ?? '';
-                $commenterName = $comment['name'] ?? 'Anonim';
-                $commentText = $contentStr;
-
-                if (str_contains($contentStr, ':')) {
-                    $parts = explode(':', $contentStr, 2);
-                    $commenterName = trim($parts[0]);
-                    $commentText = trim($parts[1]);
-                }
-
-                $canDelete = false;
-                if (session()->has('user_token') && session()->has('user_data')) {
-                    $currentUser = session('user_data');
-                    $currentUserName = trim($currentUser['name'] ?? '');
-                    $currentUserRole = trim($currentUser['role'] ?? '');
-
-                    if ($currentUserName === $commenterName || $currentUserRole === 'admin') {
-                        $canDelete = true;
-                    }
-                }
-
-                $rawPost['comments'][$key]['display_name'] = $commenterName;
-                $rawPost['comments'][$key]['display_text'] = $commentText;
-                $rawPost['comments'][$key]['can_delete'] = $canDelete;
-            }
-        }
-
-        $this->post = $rawPost;
     }
 
     public function saveComment()
     {
-       
-        $token = session('user_token');
-        $userData = session('user_data');
+        $this->errorMessage = '';
+        $this->successMessage = '';
+        $this->resetErrorBag();
 
-        if (!$token) {
-            $this->addError('api_error', 'Yorum yapabilmek için lütfen giriş yapın.');
-            return;
+        if (!session()->has('user_token')) {
+            return redirect()->route('login');
         }
 
         $this->validate([
-            'content' => 'required|string|min:3|max:1000',
+            'content' => 'required|string|min:3',
         ], [
-            'content.required' => 'Lütfen bir yorum yazın.',
-            'content.min'      => 'Yorumunuz en az 3 karakter olmalıdır.',
+            'content.required' => 'Yorum alanı boş bırakılamaz.',
+            'content.min' => 'Yorum en az 3 karakter olmalıdır.',
         ]);
 
-        $userName = $userData['name'] ?? 'Kullanıcı';
-        $fullContent = $userName . ': ' . $this->content;
-
         try {
-        
-            $response = \Illuminate\Support\Facades\Http::withToken($token)
-                ->post('http://kle-blog-backend-app:8000/api/comments', [
-                    'post_id' => $this->post['id'],
-                    'name'    => $userName,
-                    'content' => $fullContent,
-                ])->json();
+            $response = ApiService::get('posts/' . $this->slug);
+            $currentPost = $response['data'] ?? ($response ?? null);
+            $postId = $currentPost['id'] ?? null;
+
+            if (!$postId) {
+                $this->addError('api_error', 'Yorum eklenecek yazı bulunamadı.');
+                return;
+            }
+
+            $res = ApiService::post('comments', [
+                'post_id' => $postId,
+                'content' => $this->content,
+            ]);
+
+            if (isset($res['message']) && str_contains(strtolower($res['message']), 'hata')) {
+                $this->addError('api_error', $res['message']);
+                return;
+            }
+
+            $this->content = '';
+            $this->successMessage = 'Yorumunuz alındı, admin onayından sonra yayınlanacaktır.';
+            
+            // Session'ı tekrar sabitleyip yeniliyoruz
+            session()->save();
+            $this->fetchPost();
         } catch (\Exception $e) {
-            $response = null;
-        }
-
-     
-        session()->put('user_token', $token);
-        session()->put('user_data', $userData);
-        session()->save();
-
-        // 4. Sonuç Kontrolü
-        if ($response && (isset($response['id']) || (isset($response['success']) && $response['success']) || isset($response['data']))) {
-            $this->successMessage = 'Yorumunuz başarıyla gönderildi! Admin onayladıktan sonra sitede yayınlanacaktır.';
-            $this->reset(['content']);
-            $this->loadPost();
-        } else {
-         
-            $this->addError('api_error', 'Yorum gönderildi veya onaya düştü.');
-            $this->reset(['content']);
-            $this->loadPost();
+            $this->addError('api_error', $e->getMessage() ?: 'Yorum eklenirken bir hata oluştu.');
         }
     }
 
-    public function deleteComment($commentId)
+    public function deleteComment(int $commentId)
     {
         if (!session()->has('user_token')) {
-            return;
+            return redirect()->route('login');
         }
 
-        $response = \Illuminate\Support\Facades\Http::withToken(session('user_token'))
-            ->delete("http://kle-blog-backend-app:8000/api/comments/{$commentId}")
-            ->json();
+        try {
+            ApiService::delete('comments/' . $commentId);
+            $this->successMessage = 'Yorum silindi.';
+            $this->fetchPost();
+        } catch (\Exception $e) {
+            $this->addError('api_error', 'Yorum silinirken bir yetki hatası oluştu.');
+        }
+    }
 
-        if (isset($response['success']) && $response['success']) {
-            $this->loadPost();
-        } else {
-            $this->addError('api_error', 'Yorum silinirken bir hata oluştu.');
+    public function deletePost(int $postId)
+    {
+        if (!session()->has('user_token')) {
+            return redirect()->route('login');
+        }
+
+        try {
+            ApiService::delete('posts/' . $postId);
+            return redirect()->route('home');
+        } catch (\Exception $e) {
+            $this->addError('api_error', $e->getMessage() ?: 'Yazı silinirken yetki hatası oluştu.');
         }
     }
 

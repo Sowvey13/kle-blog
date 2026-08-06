@@ -1,5 +1,5 @@
 <div class="max-w-7xl mx-auto px-4 py-12">
-  
+    <!-- Header -->
     <div class="text-center mb-10">
         <h1 class="text-4xl md:text-6xl font-extrabold text-gray-950 tracking-tight mb-4">
             KLE <span class="text-indigo-600">Blog</span>
@@ -9,11 +9,10 @@
         </p>
     </div>
 
-  
+    <!-- Search Input -->
     <div class="max-w-md mx-auto mb-6">
         <div class="relative shadow-sm rounded-2xl">
             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              
                 <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
@@ -27,44 +26,42 @@
         </div>
     </div>
 
-  
+    <!-- Category Filter Buttons (HTML Links) -->
     <div class="flex flex-wrap justify-center gap-2 mb-12">
         <!-- Tümü Butonu -->
-        <button 
-            wire:click="selectCategory(null)"
+        <a 
+            href="{{ route('home') }}"
             class="px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 {{ is_null($selectedCategoryId) ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}"
         >
             Tümü
-        </button>
+        </a>
 
-    
         @foreach($categories as $category)
             @if(is_array($category) && isset($category['id']))
-                <button 
-                    wire:click="selectCategory({{ $category['id'] }})"
-                    class="px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 {{ $selectedCategoryId == $category['id'] ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}"
+                <a 
+                    href="{{ route('home', ['category_id' => $category['id']]) }}"
+                    class="px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 {{ (string)$selectedCategoryId === (string)$category['id'] ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}"
                 >
                     {{ $category['name'] ?? 'Kategori' }}
-                </button>
+                </a>
             @endif
         @endforeach
     </div>
 
-  
     @error('api_error')
         <div class="max-w-md mx-auto mb-6 p-4 bg-red-50 text-red-700 text-sm font-semibold rounded-2xl border border-red-100 text-center">
             {{ $message }}
         </div>
     @enderror
 
-   
+    <!-- Posts Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         @forelse($posts as $post)
             <article class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full relative group">
                 
-               
                 @if($post['can_delete_post'] ?? false)
                     <button 
+                        type="button"
                         wire:click="deletePost({{ $post['id'] }})"
                         wire:confirm="Bu blog yazısını tamamen silmek istediğinize emin misiniz? (Tüm yorumlar da silinecektir)"
                         class="absolute top-4 right-4 bg-white/90 hover:bg-red-50 text-gray-400 hover:text-red-600 p-2 rounded-xl border border-gray-100 shadow-sm transition-all duration-200 z-10"
@@ -77,7 +74,6 @@
                 @endif
 
                 <div class="p-6 flex flex-col flex-grow">
-                   
                     <div class="flex items-center gap-2 mb-4">
                         <span class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-semibold uppercase tracking-wider">
                             {{ $post['category']['name'] ?? 'Genel' }}
@@ -87,19 +83,16 @@
                         </span>
                     </div>
 
-                  
                     <h3 class="text-xl font-bold text-gray-900 mb-3 hover:text-indigo-600 transition-colors">
                         <a href="{{ route('posts.show', $post['slug']) }}">
                             {{ $post['title'] }}
                         </a>
                     </h3>
 
-                  
                     <p class="text-gray-600 text-sm leading-relaxed mb-6 flex-grow">
                         {{ \Illuminate\Support\Str::limit($post['content'], 120) }}
                     </p>
 
-                  
                     <div class="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
                         <div class="flex items-center gap-2">
                             <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-xs">

@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\CreatePostAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StorePostRequest;
 use App\Http\Resources\PostResource;
 use App\Models\Post;
 use Illuminate\Http\JsonResponse;
@@ -11,55 +13,58 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PostController extends Controller
 {
-    public function index(): AnonymousResourceCollection
+    public function index(Request $request): AnonymousResourceCollection
     {
-        $posts = Post::with(['category', 'user'])
-            ->where('is_approved', true)
-            ->latest()
-            ->paginate(10);
+        $query = Post::with(['user', 'category'])
+            ->where('is_approved', true);
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('content', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->input('category_id'));
+        }
+
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->input('user_id'));
+        }
+
+        if ($request->filled('date')) {
+            $query->whereDate('created_at', $request->input('date'));
+        }
+
+        $perPage = (int) $request->input('per_page', 9);
+        $posts = $query->latest()->paginate($perPage);
 
         return PostResource::collection($posts);
     }
 
     public function show(string $slug): PostResource
     {
-        $post = Post::with(['category', 'user', 'comments.user'])
+        $post = Post::with(['user', 'category', 'comments' => function ($query) {
+                $query->where('is_approved', true)->with('user');
+            }])
             ->where('slug', $slug)
+            ->where('is_approved', true)
             ->firstOrFail();
-
-        $this->authorize('view', $post);
 
         return new PostResource($post);
     }
 
-    public function myPosts(Request $request): AnonymousResourceCollection
+    public function store(StorePostRequest $request, CreatePostAction $action): JsonResponse
     {
-        $posts = Post::with(['category'])
-            ->where('user_id', $request->user()->id)
-            ->latest()
-            ->paginate(10);
+        $this->authorize('create', Post::class);
 
-        return PostResource::collection($posts);
-    }
-
-    public function store(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'category_id' => ['required', 'exists:categories,id'],
-            'title' => ['required', 'string', 'max:255'],
-            'content' => ['required', 'string'],
-        ]);
-
-        $post = $request->user()->posts()->create([
-            'category_id' => $validated['category_id'],
-            'title' => $validated['title'],
-            'content' => $validated['content'],
-            'is_approved' => false,
-        ]);
+        $post = $action->execute($request->validated(), $request->user());
 
         return response()->json([
-            'message' => 'Yazı oluşturuldu ve onay için gönderildi.',
-            'data' => new PostResource($post->load(['category', 'user'])),
+            'message' => 'Yazınız oluşturuldu ve onay için admin onayına gönderildi.',
+            'data' => new PostResource($post->load(['user', 'category'])),
         ], 201);
     }
 
@@ -70,7 +75,7 @@ class PostController extends Controller
         $post->delete();
 
         return response()->json([
-            'message' => 'Yazı başarıyla silindi.',
+            'message' => 'Yazı silindi.',
         ]);
     }
 }

@@ -20,11 +20,11 @@ class CommentController extends Controller
         $comment = $request->user()->comments()->create([
             'post_id' => $validated['post_id'],
             'content' => $validated['content'],
-            'is_approved' => true,
+            'is_approved' => false,
         ]);
 
         return response()->json([
-            'message' => 'Yorum başarıyla eklendi.',
+            'message' => 'Yorumunuz alındı, admin onayından sonra yayınlanacaktır.',
             'data' => new CommentResource($comment->load('user')),
         ], 201);
     }

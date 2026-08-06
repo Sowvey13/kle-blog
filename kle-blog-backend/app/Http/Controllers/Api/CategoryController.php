@@ -8,21 +8,18 @@ use App\Models\Category;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
     public function index(): AnonymousResourceCollection
     {
-        $categories = Category::where('is_active', true)->get();
-
-        return CategoryResource::collection($categories);
+        return CategoryResource::collection(Category::all());
     }
 
     public function show(string $slug): CategoryResource
     {
-        $category = Category::where('slug', $slug)
-            ->where('is_active', true)
-            ->firstOrFail();
+        $category = Category::where('slug', $slug)->firstOrFail();
 
         return new CategoryResource($category);
     }
@@ -33,10 +30,12 @@ class CategoryController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:categories,name'],
-            'is_active' => ['boolean'],
         ]);
 
-        $category = Category::create($validated);
+        $category = Category::create([
+            'name' => $validated['name'],
+            'slug' => Str::slug($validated['name']),
+        ]);
 
         return response()->json([
             'message' => 'Kategori oluşturuldu.',
@@ -50,10 +49,12 @@ class CategoryController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:categories,name,'.$category->id],
-            'is_active' => ['boolean'],
         ]);
 
-        $category->update($validated);
+        $category->update([
+            'name' => $validated['name'],
+            'slug' => Str::slug($validated['name']),
+        ]);
 
         return response()->json([
             'message' => 'Kategori güncellendi.',

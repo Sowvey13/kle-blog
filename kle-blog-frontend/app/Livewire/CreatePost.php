@@ -4,7 +4,6 @@ namespace App\Livewire;
 
 use Livewire\Component;
 use Illuminate\Support\Facades\Http;
-use App\Services\ApiService;
 
 class CreatePost extends Component
 {
@@ -23,6 +22,11 @@ class CreatePost extends Component
         }
     }
 
+    private function getBackendUrl(): string
+    {
+        return config('services.backend.url', 'http://kle-blog-backend-app:8000');
+    }
+
     public function saveCategory()
     {
         $this->validate([
@@ -32,17 +36,22 @@ class CreatePost extends Component
         ]);
 
         $response = Http::withToken(session('user_token'))
-            ->post('http://kle-blog-backend-app:8000/api/categories', [
+            ->post($this->getBackendUrl() . '/api/categories', [
                 'name' => $this->newCategoryName,
             ]);
 
         if ($response->successful()) {
             $result = $response->json();
             
-            $this->category_id = $result['category']['id'] ?? '';
+            // API Resource yanıtından ID'yi alıyoruz
+            $createdCategoryId = $result['data']['id'] ?? ($result['id'] ?? null);
+            
+            if ($createdCategoryId) {
+                $this->category_id = (string) $createdCategoryId;
+            }
+
             $this->reset(['newCategoryName']);
             $this->showCategoryForm = false;
-            
             $this->categorySuccessMessage = 'Kategori başarıyla eklendi ve seçildi!';
         } else {
             $errorData = $response->json();
@@ -71,7 +80,7 @@ class CreatePost extends Component
         ]);
 
         $response = Http::withToken(session('user_token'))
-            ->post('http://kle-blog-backend-app:8000/api/posts', [
+            ->post($this->getBackendUrl() . '/api/posts', [
                 'title'       => $this->title,
                 'category_id' => $this->category_id,
                 'content'     => $this->content,
@@ -80,17 +89,23 @@ class CreatePost extends Component
         if ($response->successful()) {
             return redirect()->route('home');
         } else {
-            $this->addError('api_error', 'Yazı paylaşılırken bir hata oluştu: ' . $response->body());
+            $this->addError('api_error', 'Yazı paylaşılırken bir hata oluştu: ' . ($response->json('message') ?? $response->body()));
         }
     }
 
     public function render()
     {
         $categoriesData = [];
+
         try {
-            $response = Http::get('http://kle-blog-backend-app:8000/api/categories');
+            // Docker içi isteğin düşmeme ihtimaline karşı localhost fallback'li kontrol
+            $response = Http::get($this->getBackendUrl() . '/api/categories');
+            if (!$response->successful()) {
+                $response = Http::get('http://localhost:8000/api/categories');
+            }
+
             if ($response->successful()) {
-                $categoriesData = $response->json()['data'] ?? ($response->json() ?? []);
+                $categoriesData = $response->json('data') ?? ($response->json() ?? []);
             }
         } catch (\Exception $e) {
             $categoriesData = [];

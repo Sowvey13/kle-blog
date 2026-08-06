@@ -7,43 +7,60 @@ use Livewire\Component;
 
 class Login extends Component
 {
-    public $email = '';
-    public $password = '';
-    public $errorMessage = '';
+    public string $email = '';
+    public string $password = '';
+    public string $errorMessage = '';
+    public string $successMessage = '';
+
+    protected function rules(): array
+    {
+        return [
+            'email' => 'required|email',
+            'password' => 'required',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'email.required' => 'E-posta adresi zorunludur.',
+            'email.email' => 'Geçerli bir e-posta adresi giriniz.',
+            'password.required' => 'Şifre alanı zorunludur.',
+        ];
+    }
 
     public function login()
     {
-        $this->validate([
-            'email'    => 'required|email',
-            'password' => 'required|string|min:6',
-        ], [
-            'email.required'    => 'E-posta adresi zorunludur.',
-            'email.email'       => 'Geçerli bir e-posta adresi giriniz.',
-            'password.required' => 'Şifre zorunludur.',
-            'password.min'      => 'Şifre en az 6 karakter olmalıdır.',
-        ]);
+        $this->errorMessage = '';
+        $this->successMessage = '';
 
-        
+        $this->validate();
+
         $response = ApiService::post('login', [
-            'email'    => $this->email,
+            'email' => $this->email,
             'password' => $this->password,
         ]);
 
-        
-        if (isset($response['access_token'])) {
-            
-            
-            session([
-                'user_token' => $response['access_token'],
-                'user_data'  => $response['user']
-            ]);
+        $token = $response['token'] ?? ($response['data']['token'] ?? null);
+        $user = $response['user'] ?? ($response['data']['user'] ?? null);
 
-           
+        if ($token) {
+            session()->put('user_token', $token);
+            session()->put('user', $user);
+            session()->put('user_data', $user);
+            session()->save();
+
+            $this->successMessage = 'Giriş başarılı! Yönlendiriliyorsunuz...';
+
             return redirect()->route('home');
-        } else {
-            
-            $this->errorMessage = $response['message'] ?? 'Giriş bilgileri hatalı, lütfen tekrar deneyin.';
         }
+
+        if (isset($response['status']) && $response['status'] === 429) {
+            $this->errorMessage = 'Çok fazla hatalı giriş denemesi yaptınız. Lütfen daha sonra tekrar deneyin.';
+            return;
+        }
+
+        $this->errorMessage = $response['message'] ?? 'E-posta veya şifre hatalı.';
     }
 
     public function render()

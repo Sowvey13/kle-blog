@@ -16,7 +16,7 @@
 
             <form wire:submit.prevent="savePost" class="space-y-6">
                 
-           
+          
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Yazı Başlığı</label>
                     <input 
@@ -28,7 +28,7 @@
                     @error('title') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
 
-           
+             
                 <div>
                     <div class="flex items-center justify-between mb-2">
                         <label class="block text-sm font-bold text-gray-700">Kategori</label>
@@ -42,7 +42,7 @@
                     </div>
 
                     @if($categorySuccessMessage)
-                        <div class="mb-3 text-xs text-emerald-600 font-semibold bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+                        <div class="mb-3 text-xs text-emerald-600 font-semibold bg-emerald-50 p-2.5 rounded-xl border border-emerald-100">
                             {{ $categorySuccessMessage }}
                         </div>
                     @endif
@@ -54,15 +54,15 @@
                                 <input 
                                     type="text" 
                                     wire:model="newCategoryName"
-                                    placeholder="Örn: Yazılım, Teknoloji, Yaşam"
-                                    class="block w-full px-4 py-2 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="Örn: Yapay Zeka"
+                                    class="block w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 >
                                 @error('newCategoryName') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                             </div>
                             <button 
                                 type="button"
                                 wire:click="saveCategory"
-                                class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-all h-[42px]"
+                                class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-all h-[42px]"
                             >
                                 Ekle
                             </button>
@@ -75,15 +75,19 @@
                     >
                         <option value="">-- Kategori Seçin --</option>
                         @foreach($categories as $category)
-                            @if(is_array($category) && isset($category['id']))
-                                <option value="{{ $category['id'] }}">{{ $category['name'] }}</option>
+                            @php
+                                $cId = is_array($category) ? ($category['id'] ?? null) : ($category->id ?? null);
+                                $cName = is_array($category) ? ($category['name'] ?? null) : ($category->name ?? null);
+                            @endphp
+                            @if($cId && $cName)
+                                <option value="{{ $cId }}">{{ $cName }}</option>
                             @endif
                         @endforeach
                     </select>
                     @error('category_id') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
 
-           
+              
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">İçerik</label>
                     <textarea 

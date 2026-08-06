@@ -8,19 +8,15 @@ use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
-    
     public function run(): void
     {
-      
-        $defaultCategories = collect(['Teknoloji', 'Yazılım', 'Yaşam']);
-        
-        $defaultCategories->each(function ($name) {
+        $defaultCategories = ['Teknoloji', 'Yazılım', 'Yaşam'];
+
+        foreach ($defaultCategories as $categoryName) {
             Category::firstOrCreate(
-                ['name' => $name],
-                [
-                    'slug' => Str::slug($name),
-                ]
+                ['slug' => Str::slug($categoryName)],
+                ['name' => $categoryName]
             );
-        });
+        }
     }
 }

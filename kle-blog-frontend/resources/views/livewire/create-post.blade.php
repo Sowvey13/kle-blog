@@ -8,6 +8,12 @@
 
         <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden p-8">
             
+            @if(session()->has('success'))
+                <div class="mb-6 p-4 bg-emerald-50 text-emerald-700 text-sm font-semibold rounded-2xl border border-emerald-100">
+                    {{ session('success') }}
+                </div>
+            @endif
+
             @error('api_error')
                 <div class="mb-6 p-4 bg-red-50 text-red-700 text-sm font-semibold rounded-2xl border border-red-100">
                     {{ $message }}
@@ -16,7 +22,6 @@
 
             <form wire:submit.prevent="savePost" class="space-y-6">
                 
-          
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Yazı Başlığı</label>
                     <input 
@@ -28,17 +33,19 @@
                     @error('title') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
 
-             
                 <div>
                     <div class="flex items-center justify-between mb-2">
                         <label class="block text-sm font-bold text-gray-700">Kategori</label>
-                        <button 
-                            type="button"
-                            wire:click="toggleCategoryForm"
-                            class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1"
-                        >
-                            {{ $showCategoryForm ? '✕ İptal Et' : '➕ Yeni Kategori Oluştur' }}
-                        </button>
+                        
+                        @if(session('user.role') === 'admin' || session('user_data.role') === 'admin')
+                            <button 
+                                type="button"
+                                wire:click="toggleCategoryForm"
+                                class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1"
+                            >
+                                {{ $showCategoryForm ? '✕ İptal Et' : '➕ Yeni Kategori Oluştur' }}
+                            </button>
+                        @endif
                     </div>
 
                     @if($categorySuccessMessage)
@@ -47,7 +54,7 @@
                         </div>
                     @endif
 
-                    @if($showCategoryForm)
+                    @if($showCategoryForm && (session('user.role') === 'admin' || session('user_data.role') === 'admin'))
                         <div class="mb-4 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex items-end gap-3 transition-all">
                             <div class="flex-1">
                                 <label class="block text-xs font-bold text-indigo-700 uppercase mb-2">Yeni Kategori Adı</label>
@@ -87,7 +94,6 @@
                     @error('category_id') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
 
-              
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">İçerik</label>
                     <textarea 
@@ -99,7 +105,6 @@
                     @error('content') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
 
-             
                 <div class="pt-4 flex items-center justify-end gap-4 border-t border-gray-100">
                     <a href="{{ route('home') }}" class="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-800 transition-colors">
                         İptal Et

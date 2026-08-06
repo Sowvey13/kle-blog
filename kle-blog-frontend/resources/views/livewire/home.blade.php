@@ -1,4 +1,14 @@
 <div class="max-w-7xl mx-auto px-4 py-12">
+    
+    @if(session()->has('success'))
+        <div class="max-w-4xl mx-auto mb-8 p-4 bg-emerald-50 text-emerald-800 text-sm font-semibold rounded-2xl border border-emerald-100 flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-3">
+                <span class="text-xl">✅</span>
+                <span>{{ session('success') }}</span>
+            </div>
+        </div>
+    @endif
+
     <!-- Header -->
     <div class="text-center mb-10">
         <h1 class="text-4xl md:text-6xl font-extrabold text-gray-950 tracking-tight mb-4">

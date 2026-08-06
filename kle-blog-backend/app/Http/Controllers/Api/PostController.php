@@ -22,7 +22,7 @@ class PostController extends Controller
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('content', 'like', "%{$search}%");
+                    ->orWhere('content', 'like', "%{$search}%");
             });
         }
 
@@ -47,8 +47,8 @@ class PostController extends Controller
     public function show(string $slug): PostResource
     {
         $post = Post::with(['user', 'category', 'comments' => function ($query) {
-                $query->where('is_approved', true)->with('user');
-            }])
+            $query->where('is_approved', true)->with('user');
+        }])
             ->where('slug', $slug)
             ->where('is_approved', true)
             ->firstOrFail();

@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Contract;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 class ContractFactory extends Factory
 {
@@ -11,9 +12,12 @@ class ContractFactory extends Factory
 
     public function definition(): array
     {
+        $title = $this->faker->words(3, true);
+
         return [
-            'title' => $this->faker->sentence(3),
-            'content' => $this->faker->paragraphs(2, true),
+            'title' => ucfirst($title),
+            'slug' => Str::slug($title),
+            'content' => $this->faker->paragraphs(4, true),
             'is_active' => true,
         ];
     }

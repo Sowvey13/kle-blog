@@ -10,7 +10,7 @@ class CreatePostAction
 {
     public function execute(array $data, User $user): Post
     {
-        $slug = Str::slug($data['title']) . '-' . Str::random(5);
+        $slug = Str::slug($data['title']).'-'.Str::random(5);
 
         return Post::create([
             'user_id' => $user->id,

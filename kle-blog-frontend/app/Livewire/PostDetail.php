@@ -2,15 +2,19 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
 use App\Services\ApiService;
+use Livewire\Component;
 
 class PostDetail extends Component
 {
     public string $slug = '';
+
     public string $content = '';
+
     public string $errorMessage = '';
+
     public string $successMessage = '';
+
     public ?array $post = null;
 
     public function mount(string $slug)
@@ -22,7 +26,7 @@ class PostDetail extends Component
     private function fetchPost()
     {
         try {
-            $response = ApiService::get('posts/' . $this->slug);
+            $response = ApiService::get('posts/'.$this->slug);
             $this->post = $response['data'] ?? ($response ?? null);
         } catch (\Exception $e) {
             $this->post = null;
@@ -35,7 +39,7 @@ class PostDetail extends Component
         $this->successMessage = '';
         $this->resetErrorBag();
 
-        if (!session()->has('user_token')) {
+        if (! session()->has('user_token')) {
             return redirect()->route('login');
         }
 
@@ -47,12 +51,13 @@ class PostDetail extends Component
         ]);
 
         try {
-            $response = ApiService::get('posts/' . $this->slug);
+            $response = ApiService::get('posts/'.$this->slug);
             $currentPost = $response['data'] ?? ($response ?? null);
             $postId = $currentPost['id'] ?? null;
 
-            if (!$postId) {
+            if (! $postId) {
                 $this->addError('api_error', 'Yorum eklenecek yazı bulunamadı.');
+
                 return;
             }
 
@@ -63,12 +68,13 @@ class PostDetail extends Component
 
             if (isset($res['message']) && str_contains(strtolower($res['message']), 'hata')) {
                 $this->addError('api_error', $res['message']);
+
                 return;
             }
 
             $this->content = '';
             $this->successMessage = 'Yorumunuz alındı, admin onayından sonra yayınlanacaktır.';
-            
+
             // Session'ı tekrar sabitleyip yeniliyoruz
             session()->save();
             $this->fetchPost();
@@ -79,12 +85,12 @@ class PostDetail extends Component
 
     public function deleteComment(int $commentId)
     {
-        if (!session()->has('user_token')) {
+        if (! session()->has('user_token')) {
             return redirect()->route('login');
         }
 
         try {
-            ApiService::delete('comments/' . $commentId);
+            ApiService::delete('comments/'.$commentId);
             $this->successMessage = 'Yorum silindi.';
             $this->fetchPost();
         } catch (\Exception $e) {
@@ -94,12 +100,13 @@ class PostDetail extends Component
 
     public function deletePost(int $postId)
     {
-        if (!session()->has('user_token')) {
+        if (! session()->has('user_token')) {
             return redirect()->route('login');
         }
 
         try {
-            ApiService::delete('posts/' . $postId);
+            ApiService::delete('posts/'.$postId);
+
             return redirect()->route('home');
         } catch (\Exception $e) {
             $this->addError('api_error', $e->getMessage() ?: 'Yazı silinirken yetki hatası oluştu.');

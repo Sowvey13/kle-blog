@@ -16,8 +16,11 @@ class ContractResource extends Resource
     protected static ?string $model = Contract::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';
+
     protected static ?string $navigationLabel = 'Sözleşmeler';
+
     protected static ?string $pluralModelLabel = 'Sözleşmeler';
+
     protected static ?string $modelLabel = 'Sözleşme';
 
     public static function form(Form $form): Form
@@ -33,10 +36,9 @@ class ContractResource extends Resource
                                     ->maxLength(255)
                                     ->label('Sözleşme Başlığı')
                                     ->live(onBlur: true)
-                                    ->afterStateUpdated(fn (string $operation, $state, Forms\Set $set) => 
-                                        $operation === 'create' ? $set('slug', Str::slug($state)) : null
+                                    ->afterStateUpdated(fn (string $operation, $state, Forms\Set $set) => $operation === 'create' ? $set('slug', Str::slug($state)) : null
                                     ),
-                                
+
                                 Forms\Components\TextInput::make('slug')
                                     ->required()
                                     ->maxLength(255)
@@ -55,7 +57,7 @@ class ContractResource extends Resource
                             ->required()
                             ->label('Sözleşmeyi Aktif Et')
                             ->default(true),
-                    ])
+                    ]),
             ]);
     }
 

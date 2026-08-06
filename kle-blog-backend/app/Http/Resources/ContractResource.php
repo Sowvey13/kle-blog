@@ -15,6 +15,7 @@ class ContractResource extends JsonResource
             'slug' => $this->slug,
             'content' => $this->content,
             'is_active' => $this->is_active,
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

@@ -16,7 +16,7 @@ class CommentFactory extends Factory
         return [
             'post_id' => Post::factory(),
             'user_id' => User::factory(),
-            'content' => $this->faker->paragraph(),
+            'content' => $this->faker->sentence(),
             'is_approved' => true,
         ];
     }

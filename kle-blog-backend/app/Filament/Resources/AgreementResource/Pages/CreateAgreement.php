@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\AgreementResource\Pages;
 
 use App\Filament\Resources\AgreementResource;
-use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateAgreement extends CreateRecord

@@ -2,22 +2,26 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
 use Illuminate\Support\Facades\Http;
+use Livewire\Component;
 
 class CreatePost extends Component
 {
     public $title = '';
+
     public $category_id = '';
+
     public $content = '';
-    
+
     public $newCategoryName = '';
+
     public $showCategoryForm = false;
+
     public $categorySuccessMessage = '';
 
     public function mount()
     {
-        if (!session()->has('user_token')) {
+        if (! session()->has('user_token')) {
             return redirect()->route('auth.required');
         }
     }
@@ -36,16 +40,16 @@ class CreatePost extends Component
         ]);
 
         $response = Http::withToken(session('user_token'))
-            ->post($this->getBackendUrl() . '/api/categories', [
+            ->post($this->getBackendUrl().'/api/categories', [
                 'name' => $this->newCategoryName,
             ]);
 
         if ($response->successful()) {
             $result = $response->json();
-            
+
             // API Resource yanıtından ID'yi alıyoruz
             $createdCategoryId = $result['data']['id'] ?? ($result['id'] ?? null);
-            
+
             if ($createdCategoryId) {
                 $this->category_id = (string) $createdCategoryId;
             }
@@ -61,7 +65,7 @@ class CreatePost extends Component
 
     public function toggleCategoryForm()
     {
-        $this->showCategoryForm = !$this->showCategoryForm;
+        $this->showCategoryForm = ! $this->showCategoryForm;
         $this->categorySuccessMessage = '';
         $this->resetErrorBag('newCategoryName');
     }
@@ -69,27 +73,27 @@ class CreatePost extends Component
     public function savePost()
     {
         $this->validate([
-            'title'       => 'required|string|min:3|max:255',
+            'title' => 'required|string|min:3|max:255',
             'category_id' => 'required',
-            'content'     => 'required|string|min:10',
+            'content' => 'required|string|min:10',
         ], [
-            'title.required'       => 'Lütfen bir başlık girin.',
+            'title.required' => 'Lütfen bir başlık girin.',
             'category_id.required' => 'Lütfen bir kategori seçin.',
-            'content.required'     => 'Yazı içeriği boş olamaz.',
-            'content.min'          => 'Yazı içeriği en az 10 karakter olmalıdır.'
+            'content.required' => 'Yazı içeriği boş olamaz.',
+            'content.min' => 'Yazı içeriği en az 10 karakter olmalıdır.',
         ]);
 
         $response = Http::withToken(session('user_token'))
-            ->post($this->getBackendUrl() . '/api/posts', [
-                'title'       => $this->title,
+            ->post($this->getBackendUrl().'/api/posts', [
+                'title' => $this->title,
                 'category_id' => $this->category_id,
-                'content'     => $this->content,
+                'content' => $this->content,
             ]);
 
         if ($response->successful()) {
             return redirect()->route('home');
         } else {
-            $this->addError('api_error', 'Yazı paylaşılırken bir hata oluştu: ' . ($response->json('message') ?? $response->body()));
+            $this->addError('api_error', 'Yazı paylaşılırken bir hata oluştu: '.($response->json('message') ?? $response->body()));
         }
     }
 
@@ -99,8 +103,8 @@ class CreatePost extends Component
 
         try {
             // Docker içi isteğin düşmeme ihtimaline karşı localhost fallback'li kontrol
-            $response = Http::get($this->getBackendUrl() . '/api/categories');
-            if (!$response->successful()) {
+            $response = Http::get($this->getBackendUrl().'/api/categories');
+            if (! $response->successful()) {
                 $response = Http::get('http://localhost:8000/api/categories');
             }
 
@@ -112,7 +116,7 @@ class CreatePost extends Component
         }
 
         return view('livewire.create-post', [
-            'categories' => is_array($categoriesData) ? $categoriesData : []
+            'categories' => is_array($categoriesData) ? $categoriesData : [],
         ])->layout('components.layouts.app');
     }
 }

@@ -78,6 +78,7 @@ Route::post('/register-action', function (Request $request) {
             session()->put('user', $user);
             session()->put('user_data', $user);
             session()->save();
+
             return redirect()->route('home');
         }
 

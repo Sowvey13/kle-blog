@@ -11,8 +11,11 @@ class Dashboard extends Component
     use WithPagination;
 
     public string $name = '';
+
     public string $email = '';
+
     public string $successMessage = '';
+
     public string $errorMessage = '';
 
     public function mount()
@@ -54,7 +57,7 @@ class Dashboard extends Component
     public function deletePost(int $postId)
     {
         try {
-            $response = ApiService::delete('posts/' . $postId);
+            $response = ApiService::delete('posts/'.$postId);
 
             if (isset($response['message'])) {
                 $this->successMessage = 'Yazı başarıyla silindi.';

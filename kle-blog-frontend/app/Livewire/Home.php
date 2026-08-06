@@ -35,16 +35,16 @@ class Home extends Component
             'per_page' => 9,
         ];
 
-        if (!empty($this->search)) {
+        if (! empty($this->search)) {
             $queryParams['search'] = $this->search;
         }
 
-        if (!is_null($this->category_id) && $this->category_id !== '') {
+        if (! is_null($this->category_id) && $this->category_id !== '') {
             $queryParams['category_id'] = (int) $this->category_id;
         }
 
         $postsResponse = ApiService::get('posts', $queryParams);
-        
+
         $posts = $postsResponse['data'] ?? [];
         $pagination = [
             'current_page' => $postsResponse['meta']['current_page'] ?? ($postsResponse['current_page'] ?? 1),

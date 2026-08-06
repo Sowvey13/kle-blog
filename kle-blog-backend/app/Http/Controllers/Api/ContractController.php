@@ -3,28 +3,25 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ContractResource;
 use App\Models\Contract;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ContractController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(): AnonymousResourceCollection
     {
         $contracts = Contract::where('is_active', true)->get();
 
-        return response()->json([
-            'data' => $contracts,
-        ]);
+        return ContractResource::collection($contracts);
     }
 
-    public function show(string $slug): JsonResponse
+    public function show(string $slug): ContractResource
     {
         $contract = Contract::where('slug', $slug)
             ->where('is_active', true)
             ->firstOrFail();
 
-        return response()->json([
-            'data' => $contract,
-        ]);
+        return new ContractResource($contract);
     }
 }

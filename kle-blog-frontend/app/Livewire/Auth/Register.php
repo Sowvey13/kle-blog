@@ -8,10 +8,15 @@ use Livewire\Component;
 class Register extends Component
 {
     public string $name = '';
+
     public string $email = '';
+
     public string $password = '';
+
     public string $password_confirmation = '';
+
     public string $errorMessage = '';
+
     public string $successMessage = '';
 
     protected function rules(): array
@@ -63,6 +68,7 @@ class Register extends Component
 
         if (isset($response['errors']['email']) || (isset($response['message']) && str_contains($response['message'], 'email'))) {
             $this->errorMessage = 'Bu e-posta adresi zaten kayıtlı.';
+
             return;
         }
 

@@ -8,8 +8,11 @@ use Livewire\Component;
 class Login extends Component
 {
     public string $email = '';
+
     public string $password = '';
+
     public string $errorMessage = '';
+
     public string $successMessage = '';
 
     protected function rules(): array
@@ -57,6 +60,7 @@ class Login extends Component
 
         if (isset($response['status']) && $response['status'] === 429) {
             $this->errorMessage = 'Çok fazla hatalı giriş denemesi yaptınız. Lütfen daha sonra tekrar deneyin.';
+
             return;
         }
 

@@ -8,9 +8,8 @@ use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ProfileController;
 use Illuminate\Support\Facades\Route;
 
-// Public Rotalar (Giriş gerektirmeyenler)
 Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
 
 Route::get('/posts', [PostController::class, 'index']);
 Route::get('/posts/{slug}', [PostController::class, 'show']);
@@ -21,7 +20,6 @@ Route::get('/categories/{slug}', [CategoryController::class, 'show']);
 Route::get('/contracts', [ContractController::class, 'index']);
 Route::get('/contracts/{slug}', [ContractController::class, 'show']);
 
-// Protected Rotalar (Sanctum Token Gerektirenler)
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [ProfileController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);

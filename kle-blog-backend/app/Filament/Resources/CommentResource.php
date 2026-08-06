@@ -15,8 +15,11 @@ class CommentResource extends Resource
     protected static ?string $model = Comment::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
+
     protected static ?string $navigationLabel = 'Yorumlar';
+
     protected static ?string $pluralModelLabel = 'Yorumlar';
+
     protected static ?string $modelLabel = 'Yorum';
 
     public static function form(Form $form): Form
@@ -52,7 +55,7 @@ class CommentResource extends Resource
                             ->required()
                             ->label('Yorumu Sitede Yayınla (Onayla)')
                             ->default(false),
-                    ])
+                    ]),
             ]);
     }
 

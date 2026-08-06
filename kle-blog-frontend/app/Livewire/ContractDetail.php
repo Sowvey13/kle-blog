@@ -8,12 +8,13 @@ use Livewire\Component;
 class ContractDetail extends Component
 {
     public string $slug;
+
     public array $contract = [];
 
     public function mount(string $slug)
     {
         $this->slug = $slug;
-        $response = ApiService::get('contracts/' . $slug);
+        $response = ApiService::get('contracts/'.$slug);
         $this->contract = $response['data'] ?? [];
     }
 

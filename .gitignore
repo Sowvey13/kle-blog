@@ -1,1 +1,22 @@
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# IDE & Editor Settings
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Local Dev & Tooling Configs
+*.local
 .aider*
+.env.backup
+.env.production
+
+# Monorepo Common Ignores
+node_modules/
+vendor/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

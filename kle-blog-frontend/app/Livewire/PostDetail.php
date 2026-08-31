@@ -23,12 +23,12 @@ class PostDetail extends Component
         $this->fetchPost();
     }
 
-    private function fetchPost()
+    public function fetchPost()
     {
-        try {
-            $response = ApiService::get('posts/'.$this->slug);
+        $response = ApiService::get('posts/'.$this->slug);
+        if (! isset($response['error'])) {
             $this->post = $response['data'] ?? ($response ?? null);
-        } catch (\Exception $e) {
+        } else {
             $this->post = null;
         }
     }
@@ -50,37 +50,28 @@ class PostDetail extends Component
             'content.min' => 'Yorum en az 3 karakter olmalıdır.',
         ]);
 
-        try {
-            $response = ApiService::get('posts/'.$this->slug);
-            $currentPost = $response['data'] ?? ($response ?? null);
-            $postId = $currentPost['id'] ?? null;
+        $postId = $this->post['id'] ?? null;
 
-            if (! $postId) {
-                $this->addError('api_error', 'Yorum eklenecek yazı bulunamadı.');
+        if (! $postId) {
+            $this->addError('api_error', 'Yorum eklenecek yazı bulunamadı.');
 
-                return;
-            }
-
-            $res = ApiService::post('comments', [
-                'post_id' => $postId,
-                'content' => $this->content,
-            ]);
-
-            if (isset($res['message']) && str_contains(strtolower($res['message']), 'hata')) {
-                $this->addError('api_error', $res['message']);
-
-                return;
-            }
-
-            $this->content = '';
-            $this->successMessage = 'Yorumunuz alındı, admin onayından sonra yayınlanacaktır.';
-
-            // Session'ı tekrar sabitleyip yeniliyoruz
-            session()->save();
-            $this->fetchPost();
-        } catch (\Exception $e) {
-            $this->addError('api_error', $e->getMessage() ?: 'Yorum eklenirken bir hata oluştu.');
+            return;
         }
+
+        $res = ApiService::post('comments', [
+            'post_id' => $postId,
+            'content' => $this->content,
+        ]);
+
+        if (isset($res['error']) && $res['error']) {
+            $this->addError('api_error', $res['message'] ?? 'Yorum gönderilemedi.');
+
+            return;
+        }
+
+        $this->content = '';
+        $this->successMessage = $res['message'] ?? 'Yorumunuz alındı, admin onayından sonra yayınlanacaktır.';
+        $this->fetchPost();
     }
 
     public function deleteComment(int $commentId)
@@ -89,12 +80,12 @@ class PostDetail extends Component
             return redirect()->route('login');
         }
 
-        try {
-            ApiService::delete('comments/'.$commentId);
+        $res = ApiService::delete('comments/'.$commentId);
+        if (! isset($res['error'])) {
             $this->successMessage = 'Yorum silindi.';
             $this->fetchPost();
-        } catch (\Exception $e) {
-            $this->addError('api_error', 'Yorum silinirken bir yetki hatası oluştu.');
+        } else {
+            $this->addError('api_error', $res['message'] ?? 'Yorum silinirken yetki hatası oluştu.');
         }
     }
 
@@ -104,13 +95,12 @@ class PostDetail extends Component
             return redirect()->route('login');
         }
 
-        try {
-            ApiService::delete('posts/'.$postId);
-
+        $res = ApiService::delete('posts/'.$postId);
+        if (! isset($res['error'])) {
             return redirect()->route('home');
-        } catch (\Exception $e) {
-            $this->addError('api_error', $e->getMessage() ?: 'Yazı silinirken yetki hatası oluştu.');
         }
+
+        $this->addError('api_error', $res['message'] ?? 'Yazı silinirken yetki hatası oluştu.');
     }
 
     public function render()

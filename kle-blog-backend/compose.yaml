@@ -5,36 +5,41 @@ services:
       dockerfile: Dockerfile
     container_name: kle-blog-backend-app
     restart: unless-stopped
-    tty: true
-    ports:
-      - "8000:8000"
-    
-    command: php artisan serve --host=0.0.0.0 --port=8000
+    working_dir: /var/www
     volumes:
       - .:/var/www
+    ports:
+      - "8000:8000"
+    command: php artisan serve --host=0.0.0.0 --port=8000
     networks:
       - kle-blog-network
     depends_on:
-      - backend-mysql
+      backend-db:
+        condition: service_healthy
 
-  backend-mysql:
-    image: "mysql:8.4"
+  backend-db:
+    image: mysql:8.0
     container_name: kle-blog-backend-db
     restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: kle_blog
+      MYSQL_ROOT_PASSWORD: root
     ports:
       - "3306:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: "password"
-      MYSQL_DATABASE: "kle_blog_backend_db"
     volumes:
       - kle-blog-db-data:/var/lib/mysql
     networks:
       - kle-blog-network
-
-networks:
-  kle-blog-network:
-    driver: bridge
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
 
 volumes:
   kle-blog-db-data:
-    driver: local
+
+networks:
+  kle-blog-network:
+    name: kle-blog-network
+    driver: bridge

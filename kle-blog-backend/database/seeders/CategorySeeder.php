@@ -10,15 +10,13 @@ class CategorySeeder extends Seeder
 {
     public function run(): void
     {
-
         $defaultCategories = ['Yazılım', 'Teknoloji', 'Yaşam'];
 
         foreach ($defaultCategories as $name) {
-
             Category::firstOrCreate(
-                ['name' => $name],
+                ['slug' => Str::slug($name)],
                 [
-                    'slug' => Str::slug($name),
+                    'name' => $name,
                     'is_active' => true,
                 ]
             );

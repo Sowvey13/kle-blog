@@ -44,6 +44,24 @@ class Login extends Component
             'password' => $this->password,
         ]);
 
+        if (isset($response['error']) && $response['error'] === true) {
+            if (isset($response['status']) && $response['status'] === 429) {
+                $this->errorMessage = 'Çok fazla hatalı giriş denemesi yaptınız. Lütfen bir süre bekleyip tekrar deneyin.';
+
+                return;
+            }
+
+            if (isset($response['status']) && $response['status'] === 401) {
+                $this->errorMessage = 'Girdiğiniz e-posta adresi veya şifre hatalı.';
+
+                return;
+            }
+
+            $this->errorMessage = $response['message'] ?? 'Giriş yapılamadı. Bilgilerinizi kontrol ediniz.';
+
+            return;
+        }
+
         $token = $response['token'] ?? ($response['data']['token'] ?? null);
         $user = $response['user'] ?? ($response['data']['user'] ?? null);
 
@@ -58,13 +76,7 @@ class Login extends Component
             return redirect()->route('home');
         }
 
-        if (isset($response['status']) && $response['status'] === 429) {
-            $this->errorMessage = 'Çok fazla hatalı giriş denemesi yaptınız. Lütfen daha sonra tekrar deneyin.';
-
-            return;
-        }
-
-        $this->errorMessage = $response['message'] ?? 'E-posta veya şifre hatalı.';
+        $this->errorMessage = 'Girdiğiniz e-posta adresi veya şifre hatalı.';
     }
 
     public function render()

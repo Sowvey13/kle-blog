@@ -4,14 +4,10 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CategoryResource\Pages;
 use App\Models\Category;
-use Filament\Forms\Components\TextInput;
+use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Forms\Set;
 use Filament\Resources\Resource;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Columns\TextColumn;
+use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
 
@@ -21,20 +17,31 @@ class CategoryResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
+    protected static ?string $navigationGroup = 'İçerik Yönetimi';
+
+    protected static ?string $navigationLabel = 'Kategoriler';
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                TextInput::make('name')
+                Forms\Components\TextInput::make('name')
+                    ->label('Kategori Adı')
                     ->required()
-                    ->live(debounce: 500)
-                    ->afterStateUpdated(fn (string $operation, $state, Set $set) => $operation === 'create' ? $set('slug', Str::slug($state)) : null
-                    ),
-                TextInput::make('slug')
-                    ->disabled()
-                    ->dehydrated()
+                    ->maxLength(255)
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(fn (string $operation, $state, Forms\Set $set) => $operation === 'create' ? $set('slug', Str::slug($state)) : null),
+
+                Forms\Components\TextInput::make('slug')
+                    ->label('Slug')
                     ->required()
-                    ->unique(ignoreRecord: true),
+                    ->unique(Category::class, 'slug', ignoreRecord: true)
+                    ->maxLength(255),
+
+                Forms\Components\Toggle::make('is_active')
+                    ->label('Aktif mi?')
+                    ->default(true)
+                    ->required(),
             ]);
     }
 
@@ -42,34 +49,38 @@ class CategoryResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Kategori Adı')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('slug')
-                    ->sortable(),
-                TextColumn::make('created_at')
-                    ->dateTime('d/m/Y H:i')
+
+                Tables\Columns\TextColumn::make('slug')
+                    ->label('Slug')
+                    ->searchable(),
+
+                Tables\Columns\IconColumn::make('is_active')
+                    ->label('Durum')
+                    ->boolean(),
+
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Oluşturulma')
+                    ->dateTime('d.m.Y H:i')
                     ->sortable()
-                    ->label('Oluşturulma Tarihi'),
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Tables\Filters\TernaryFilter::make('is_active')
+                    ->label('Aktiflik Durumu'),
             ])
             ->actions([
-                EditAction::make(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
     }
 
     public static function getPages(): array

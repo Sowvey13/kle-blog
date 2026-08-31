@@ -16,19 +16,47 @@ class Home extends Component
     #[Url]
     public $category_id = null;
 
+    public array $posts = [];
+
+    public array $categories = [];
+
+    public array $pagination = [
+        'current_page' => 1,
+        'last_page' => 1,
+        'total' => 0,
+    ];
+
     public function mount()
     {
         if (request()->has('category_id')) {
             $this->category_id = request()->query('category_id');
         }
+
+        $this->loadCategories();
+        $this->loadPosts();
     }
 
-    public function updatingSearch()
+    public function updatedSearch()
     {
         $this->resetPage();
+        $this->loadPosts();
     }
 
-    public function render()
+    public function updatedCategoryId()
+    {
+        $this->resetPage();
+        $this->loadPosts();
+    }
+
+    public function loadCategories()
+    {
+        $response = ApiService::get('categories');
+        if (! isset($response['error'])) {
+            $this->categories = $response['data'] ?? ($response ?? []);
+        }
+    }
+
+    public function loadPosts()
     {
         $queryParams = [
             'page' => $this->getPage(),
@@ -43,23 +71,27 @@ class Home extends Component
             $queryParams['category_id'] = (int) $this->category_id;
         }
 
-        $postsResponse = ApiService::get('posts', $queryParams);
+        $response = ApiService::get('posts', $queryParams);
 
-        $posts = $postsResponse['data'] ?? [];
-        $pagination = [
-            'current_page' => $postsResponse['meta']['current_page'] ?? ($postsResponse['current_page'] ?? 1),
-            'last_page' => $postsResponse['meta']['last_page'] ?? ($postsResponse['last_page'] ?? 1),
-            'total' => $postsResponse['meta']['total'] ?? ($postsResponse['total'] ?? 0),
-        ];
+        if (! isset($response['error'])) {
+            $this->posts = $response['data'] ?? [];
+            $this->pagination = [
+                'current_page' => $response['meta']['current_page'] ?? ($response['current_page'] ?? 1),
+                'last_page' => $response['meta']['last_page'] ?? ($response['last_page'] ?? 1),
+                'total' => $response['meta']['total'] ?? ($response['total'] ?? 0),
+            ];
+        } else {
+            $this->posts = [];
+        }
+    }
 
-        $categoriesResponse = ApiService::get('categories');
-        $categories = $categoriesResponse['data'] ?? ($categoriesResponse ?? []);
-
+    public function render()
+    {
         return view('livewire.home', [
-            'posts' => $posts,
-            'categories' => $categories,
+            'posts' => $this->posts,
+            'categories' => $this->categories,
             'selectedCategoryId' => $this->category_id,
-            'pagination' => $pagination,
+            'pagination' => $this->pagination,
         ])->layout('components.layouts.app');
     }
 }

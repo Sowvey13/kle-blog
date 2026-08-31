@@ -22,6 +22,7 @@ Route::get('/login', Login::class)->name('login');
 Route::get('/register', Register::class)->name('register');
 Route::get('/auth-required', AuthRequired::class)->name('auth.required');
 
+// Klasik Form Fallback Rotaları
 Route::post('/login-action', function (Request $request) {
     $request->validate([
         'email' => 'required|email',
@@ -69,20 +70,16 @@ Route::post('/register-action', function (Request $request) {
         'password_confirmation' => $request->password_confirmation,
     ]);
 
-    if (isset($response['data']) || isset($response['user']) || isset($response['token'])) {
-        $token = $response['token'] ?? ($response['data']['token'] ?? null);
-        $user = $response['user'] ?? ($response['data']['user'] ?? null);
+    $token = $response['token'] ?? ($response['data']['token'] ?? null);
+    $user = $response['user'] ?? ($response['data']['user'] ?? null);
 
-        if ($token) {
-            session()->put('user_token', $token);
-            session()->put('user', $user);
-            session()->put('user_data', $user);
-            session()->save();
+    if ($token) {
+        session()->put('user_token', $token);
+        session()->put('user', $user);
+        session()->put('user_data', $user);
+        session()->save();
 
-            return redirect()->route('home');
-        }
-
-        return redirect()->route('login')->with('successMessage', 'Kayıt başarılı! Giriş yapabilirsiniz.');
+        return redirect()->route('home');
     }
 
     $errorMessage = $response['message'] ?? 'Kayıt yapılırken bir hata oluştu.';
@@ -94,6 +91,8 @@ Route::post('/register-action', function (Request $request) {
 })->name('register.action');
 
 Route::post('/logout', function () {
+    ApiService::post('logout');
+
     session()->forget(['user', 'user_data', 'user_token']);
     session()->invalidate();
     session()->regenerateToken();
@@ -101,7 +100,8 @@ Route::post('/logout', function () {
     return redirect()->route('home');
 })->name('logout');
 
-Route::middleware(['web'])->group(function () {
+// Oturum Gerektiren Sayfalar
+Route::middleware(['auth.custom'])->group(function () {
     Route::get('/dashboard', Dashboard::class)->name('dashboard');
     Route::get('/posts-create', CreatePost::class)->name('posts.create');
 });

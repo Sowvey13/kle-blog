@@ -18,13 +18,27 @@ class Dashboard extends Component
 
     public string $errorMessage = '';
 
+    public array $myPosts = [];
+
     public function mount()
     {
         $userResponse = ApiService::get('me');
-        $userData = $userResponse['data'] ?? session('user') ?? session('user_data') ?? [];
+        $userData = (! isset($userResponse['error']) ? ($userResponse['data'] ?? $userResponse) : null) ?? session('user') ?? session('user_data') ?? [];
 
         $this->name = $userData['name'] ?? '';
         $this->email = $userData['email'] ?? '';
+
+        $this->loadMyPosts();
+    }
+
+    public function loadMyPosts()
+    {
+        $response = ApiService::get('my-posts', ['page' => $this->getPage()]);
+        if (! isset($response['error'])) {
+            $this->myPosts = $response['data'] ?? [];
+        } else {
+            $this->myPosts = [];
+        }
     }
 
     public function updateProfile()
@@ -34,51 +48,39 @@ class Dashboard extends Component
             'email' => 'required|email',
         ]);
 
-        try {
-            $response = ApiService::put('profile', [
-                'name' => $this->name,
-                'email' => $this->email,
-            ]);
+        $response = ApiService::put('profile', [
+            'name' => $this->name,
+            'email' => $this->email,
+        ]);
 
-            if (isset($response['data'])) {
-                session(['user' => $response['data']]);
-                $this->successMessage = 'Profil bilgileriniz başarıyla güncellendi.';
-                $this->errorMessage = '';
-            } else {
-                $this->errorMessage = $response['message'] ?? 'Güncelleme yapılamadı.';
-                $this->successMessage = '';
-            }
-        } catch (\Exception $e) {
-            $this->errorMessage = 'Bir hata oluştu.';
+        if (! isset($response['error']) && isset($response['data'])) {
+            session(['user' => $response['data']]);
+            $this->successMessage = 'Profil bilgileriniz başarıyla güncellendi.';
+            $this->errorMessage = '';
+        } else {
+            $this->errorMessage = $response['message'] ?? 'Güncelleme yapılamadı.';
             $this->successMessage = '';
         }
     }
 
     public function deletePost(int $postId)
     {
-        try {
-            $response = ApiService::delete('posts/'.$postId);
+        $response = ApiService::delete('posts/'.$postId);
 
-            if (isset($response['message'])) {
-                $this->successMessage = 'Yazı başarıyla silindi.';
-                $this->errorMessage = '';
-            } else {
-                $this->errorMessage = 'Yazı silinirken bir hata oluştu.';
-                $this->successMessage = '';
-            }
-        } catch (\Exception $e) {
-            $this->errorMessage = 'Yazı silinemedi.';
+        if (! isset($response['error'])) {
+            $this->successMessage = 'Yazı başarıyla silindi.';
+            $this->errorMessage = '';
+            $this->loadMyPosts();
+        } else {
+            $this->errorMessage = $response['message'] ?? 'Yazı silinirken bir hata oluştu.';
             $this->successMessage = '';
         }
     }
 
     public function render()
     {
-        $response = ApiService::get('my-posts', ['page' => $this->getPage()]);
-        $myPosts = $response['data'] ?? [];
-
         return view('livewire.dashboard', [
-            'myPosts' => $myPosts,
+            'myPosts' => $this->myPosts,
         ])->layout('components.layouts.app');
     }
 }

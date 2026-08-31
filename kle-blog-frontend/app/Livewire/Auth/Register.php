@@ -22,21 +22,22 @@ class Register extends Component
     protected function rules(): array
     {
         return [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email',
-            'password' => 'required|min:8|confirmed',
+            'name' => 'required|min:3|max:255',
+            'email' => 'required|email|max:255',
+            'password' => 'required|min:6|confirmed',
         ];
     }
 
     protected function messages(): array
     {
         return [
-            'name.required' => 'Adınız soyadınız alanı zorunludur.',
+            'name.required' => 'Ad Soyad alanı zorunludur.',
+            'name.min' => 'Ad Soyad en az 3 karakter olmalıdır.',
             'email.required' => 'E-posta adresi zorunludur.',
             'email.email' => 'Geçerli bir e-posta adresi giriniz.',
             'password.required' => 'Şifre alanı zorunludur.',
-            'password.min' => 'Şifreniz en az 8 karakter olmalıdır.',
-            'password.confirmed' => 'Şifreler birbiriyle eşleşmiyor.',
+            'password.min' => 'Şifreniz en az 6 karakterden oluşmalıdır.',
+            'password.confirmed' => 'Girdiğiniz şifreler birbiriyle eşleşmiyor.',
         ];
     }
 
@@ -54,6 +55,28 @@ class Register extends Component
             'password_confirmation' => $this->password_confirmation,
         ]);
 
+        if (isset($response['error']) && $response['error'] === true) {
+            // Backend validasyon hatalarını (örn: bu e-posta zaten kayıtlı) yakalama
+            if (isset($response['errors']) && is_array($response['errors'])) {
+                $firstError = collect($response['errors'])->flatten()->first();
+                if ($firstError) {
+                    $this->errorMessage = $firstError;
+
+                    return;
+                }
+            }
+
+            if (isset($response['status']) && $response['status'] === 422) {
+                $this->errorMessage = 'Bu e-posta adresi zaten kullanımda veya geçersiz bilgi girdiniz.';
+
+                return;
+            }
+
+            $this->errorMessage = $response['message'] ?? 'Kayıt işlemi sırasında bir hata oluştu.';
+
+            return;
+        }
+
         $token = $response['token'] ?? ($response['data']['token'] ?? null);
         $user = $response['user'] ?? ($response['data']['user'] ?? null);
 
@@ -66,13 +89,9 @@ class Register extends Component
             return redirect()->route('home');
         }
 
-        if (isset($response['errors']['email']) || (isset($response['message']) && str_contains($response['message'], 'email'))) {
-            $this->errorMessage = 'Bu e-posta adresi zaten kayıtlı.';
+        $this->successMessage = 'Kayıt başarılı! Giriş yapabilirsiniz.';
 
-            return;
-        }
-
-        $this->errorMessage = $response['message'] ?? 'Kayıt yapılırken bir hata oluştu.';
+        return redirect()->route('login');
     }
 
     public function render()

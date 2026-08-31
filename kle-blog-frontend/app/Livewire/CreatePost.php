@@ -37,6 +37,7 @@ class CreatePost extends Component
 
         if ($userRole !== 'admin') {
             $this->addError('newCategoryName', 'Normal kullanıcılar kategori oluşturamaz.');
+
             return;
         }
 
@@ -90,6 +91,7 @@ class CreatePost extends Component
 
         if (isset($response['data']) || (isset($response['message']) && ! isset($response['errors']))) {
             session()->flash('success', $response['message'] ?? 'Yazınız oluşturuldu ve onay için admin onayına gönderildi.');
+
             return redirect()->route('home');
         }
 

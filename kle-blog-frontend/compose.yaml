@@ -10,9 +10,9 @@ services:
     volumes:
       - .:/var/www
     networks:
-      - backend-network
+      - kle-blog-network
     command: php artisan serve --host=0.0.0.0 --port=8000
+
 networks:
-  backend-network:
+  kle-blog-network:
     external: true
-    name: kle-blog-backend_kle-blog-network

@@ -5,12 +5,14 @@ namespace App\Filament\Resources;
 use App\Enums\UserRole;
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
+use Filament\Actions\DeleteAction as PageDeleteAction;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Actions\DeleteAction as TableDeleteAction;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Hash;
 
 class UserResource extends Resource
 {
@@ -50,7 +52,6 @@ class UserResource extends Resource
                 Forms\Components\TextInput::make('password')
                     ->label('Şifre')
                     ->password()
-                    ->dehydrateStateUsing(fn ($state) => filled($state) ? Hash::make($state) : null)
                     ->dehydrated(fn ($state) => filled($state))
                     ->required(fn (string $operation): bool => $operation === 'create')
                     ->maxLength(255),
@@ -94,13 +95,40 @@ class UserResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                TableDeleteAction::make()
+                    ->before(fn (TableDeleteAction $action, User $record) => self::haltIfLastAdminDeletion($action, $record)),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->before(function (Tables\Actions\DeleteBulkAction $action, $records): void {
+                            if (! User::deletionWouldRemoveLastAdmin($records)) {
+                                return;
+                            }
+
+                            self::notifyLastAdminRequired();
+                            $action->cancel();
+                        }),
                 ]),
             ]);
+    }
+
+    public static function haltIfLastAdminDeletion(TableDeleteAction|PageDeleteAction $action, User $record): void
+    {
+        if (! $record->isLastAdmin()) {
+            return;
+        }
+
+        self::notifyLastAdminRequired();
+        $action->cancel();
+    }
+
+    public static function notifyLastAdminRequired(): void
+    {
+        Notification::make()
+            ->title(User::LAST_ADMIN_MESSAGE)
+            ->danger()
+            ->send();
     }
 
     public static function getPages(): array

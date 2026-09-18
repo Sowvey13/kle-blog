@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\UserResource\Pages;
 
 use App\Filament\Resources\UserResource;
+use App\Models\User;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
@@ -13,7 +14,18 @@ class EditUser extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->before(fn (Actions\DeleteAction $action, User $record) => UserResource::haltIfLastAdminDeletion($action, $record)),
         ];
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        if ($this->record->isDemotingLastAdmin($data['role'] ?? null)) {
+            UserResource::notifyLastAdminRequired();
+            $this->halt();
+        }
+
+        return $data;
     }
 }

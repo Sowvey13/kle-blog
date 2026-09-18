@@ -10,7 +10,7 @@ services:
       - .:/var/www
     ports:
       - "8000:8000"
-    command: php artisan serve --host=0.0.0.0 --port=8000
+    command: ["sh", "-c", "until [ -f vendor/autoload.php ]; do sleep 1; done; php artisan serve --host=0.0.0.0 --port=8000"]
     networks:
       - kle-blog-network
     depends_on:
@@ -22,8 +22,10 @@ services:
     container_name: kle-blog-backend-db
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: kle_blog
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
     ports:
       - "3306:3306"
     volumes:
@@ -31,7 +33,7 @@ services:
     networks:
       - kle-blog-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USERNAME}", "-p${DB_PASSWORD}"]
       interval: 3s
       timeout: 3s
       retries: 10

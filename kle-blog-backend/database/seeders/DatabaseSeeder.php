@@ -2,21 +2,23 @@
 
 namespace Database\Seeders;
 
-use App\Models\Category;
+use App\Enums\UserRole;
+use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $defaultCategories = ['Teknoloji', 'Yazılım', 'Yaşam'];
+        User::firstOrCreate(
+            ['email' => 'admin@kleblog.com'],
+            [
+                'name' => 'Admin',
+                'password' => 'password',
+                'role' => UserRole::ADMIN,
+            ]
+        );
 
-        foreach ($defaultCategories as $categoryName) {
-            Category::firstOrCreate(
-                ['slug' => Str::slug($categoryName)],
-                ['name' => $categoryName]
-            );
-        }
+        $this->call(CategorySeeder::class);
     }
 }

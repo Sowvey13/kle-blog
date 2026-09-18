@@ -3,7 +3,7 @@
 return [
 
     'backend' => [
-        'url' => env('BACKEND_API_URL', 'http://kle-blog-backend-app:8000'),
+        'url' => env('BACKEND_API_URL', 'http://backend:8000'),
     ],
 
     'postmark' => [

@@ -1,27 +1,5 @@
-KLE Blog - Frontend Client 🌐
-Bu proje, KLE Blog uygulamasının kullanıcı dostu, modern ve tamamen duyarlı (responsive) ön yüz (frontend) uygulamasıdır. Backend API servisleri ile tamamen asenkron şekilde haberleşir ve kendi üzerinde hiçbir veritabanı bağlantısı barındırmaz.
+# KLE Blog Frontend
 
-🛠️ Kullanılan Teknolojiler
-Framework: Laravel 11
+Laravel 13 ve Livewire 4 istemcisi. Backend API'ye sunucu tarafında `BACKEND_API_URL` (`http://backend:8000`) üzerinden bağlanır.
 
-Dinamik Arayüz: Livewire v3 (Full-Page Components)
-
-Tasarım & Stil: Tailwind CSS
-
-API İletişimi: Laravel HTTP Client (Guzzle)
-
-🚀 Docker ile Ayağa Kaldırma
-Projeyi Klonlayın ve Klasöre Girin:
-
-
-cd kle-blog-frontend
-Docker Konteynerlerini Başlatın:
-
-
-docker compose up -d
-Uygulama Önbelleğini Temizleyin:
-
-
-docker compose exec frontend-app php artisan view:clear
-Tarayıcıdan Erişin:
-👉 http://localhost:8001
+Tercih edilen çalışma şekli kök dizindeki `docker-compose.yml` dosyasıdır. Uygulama adresi: http://localhost:8080.

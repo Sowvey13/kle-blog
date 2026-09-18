@@ -18,8 +18,10 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
 RUN docker-php-ext-install pdo pdo_sqlite mbstring exif pcntl bcmath gd zip
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY docker/entrypoint.sh /usr/local/bin/app-entrypoint.sh
+RUN chmod +x /usr/local/bin/app-entrypoint.sh
 
 WORKDIR /var/www
 
-EXPOSE 9000
-CMD ["php-fpm"]
+EXPOSE 8000
+ENTRYPOINT ["app-entrypoint.sh"]

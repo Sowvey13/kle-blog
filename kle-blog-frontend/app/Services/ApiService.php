@@ -104,7 +104,7 @@ class ApiService
 
     private static function getBaseUrl(): string
     {
-        return rtrim(config('services.backend.url', 'http://kle-blog-backend-app:8000'), '/').'/api';
+        return rtrim(config('services.backend.url', 'http://backend:8000'), '/').'/api';
     }
 
     private static function getHeaders(): array

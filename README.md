@@ -1,47 +1,93 @@
-KLE Blog Monorepo
-Bu proje, modern web mimarisi standartlarına uygun olarak geliştirilmiş modüler bir blog platformudur. Sistem, RESTful API mimarisi sunan Laravel 13 Backend servisi ve bu API'yi tüketen Livewire 4 tabanlı Frontend istemcisinden oluşmaktadır.
+# KLE Blog
 
-🛠 Teknoloji Yığını
-Backend: Laravel 13 (^13.8), FilamentPHP v3 (Admin Paneli), Laravel Sanctum (API Token Auth), MySQL
+Laravel 13 API, Filament v3 yönetim paneli ve Livewire 4 frontend içeren bir monorepo blog platformudur.
 
-Frontend: Laravel 13 (^13.8), Livewire v4 (^4.3), Tailwind CSS (Vite Entegrasyonu)
+## Teknoloji yığını
 
-Konteynırlaştırma: Docker & Docker Compose (PHP 8.4, ext-zip aktif)
+| Katman | Sürüm |
+| --- | --- |
+| PHP | 8.4+ |
+| Backend | Laravel 13, Filament v3, Laravel Sanctum, MySQL 8 |
+| Frontend | Laravel 13, Livewire 4, Tailwind CSS (Vite) |
+| Altyapı | Docker Compose, PHP 8.4 (`ext-zip` etkin) |
 
-Hızlı Kurulum & Çalıştırma
-Projenin her iki bileşeni de Dockerize edilmiştir. Temiz kurulum için bağımlılıklar, uygulama container'ı ayağa kalkmadan `docker compose run` ile kurulmalıdır.
+## Sıfırdan kurulum
 
-1. Backend Servisini Ayağa Kaldırma (Port: 8000)
-cd kle-blog-backend
+Kök dizinde tek Compose dosyası tüm servisleri ayağa kaldırır: `mysql`, `backend` (port 8000), `frontend` (port 8080). Frontend, API'ye Docker ağı üzerinden `http://backend:8000/api` adresinden erişir. Backend entrypoint ilk açılışta Composer, `APP_KEY`, migrate ve seed çalıştırır.
+
+```bash
+git clone <repo-url> kle-blog
+cd kle-blog
 cp .env.example .env
-docker compose build
-docker compose run --rm backend-app composer install
+cp kle-blog-backend/.env.example kle-blog-backend/.env
+cp kle-blog-frontend/.env.example kle-blog-frontend/.env
 docker compose up -d
-docker compose exec backend-app php artisan key:generate
-docker compose exec backend-app php artisan migrate:fresh --seed
-API Adresi: http://localhost:8000/api
+```
 
-Admin Paneli: http://localhost:8000/admin
-**Varsayılan Giriş Bilgileri:**
-- E-posta: `admin@kleblog.com`
+Eşdeğer Make hedefi:
+
+```bash
+make up
+```
+
+İlk ayağa kalkışta imaj derlemesi, Composer ve (frontend) npm build biraz sürebilir. Servisler hazır olduğunda:
+
+- API: http://localhost:8000/api
+- Filament: http://localhost:8000/admin
+- Frontend: http://localhost:8080
+
+Seed bir kez daha çalıştırmak için:
+
+```bash
+make seed
+```
+
+veya
+
+```bash
+docker compose exec backend php artisan migrate --force
+docker compose exec backend php artisan db:seed --force
+```
+
+### Varsayılan admin
+
+- E-posta: `admin@example.com`
 - Şifre: `password`
 
-2. Frontend İstemcisini Ayağa Kaldırma (Port: 8001)
-cd ../kle-blog-frontend
-cp .env.example .env
-docker compose build
-docker compose run --rm frontend-app composer install
-docker compose up -d
-docker compose exec frontend-app php artisan key:generate
-Uygulama Adresi: http://localhost:8001
+## Testler
 
-Testler ve Kod Standartları
-Her iki servis için testleri ve kod formatlama (Pint) kontrollerini aşağıdaki komutlarla çalıştırabilirsiniz:
+```bash
+make test
+```
 
-# Backend Testleri & Pint Kontrolü
-docker compose exec backend-app php artisan test
-docker compose exec backend-app ./vendor/bin/pint --test
+veya ayrı ayrı:
 
-# Frontend Testleri & Pint Kontrolü
-docker compose exec frontend-app php artisan test
-docker compose exec frontend-app ./vendor/bin/pint --test
+```bash
+docker compose exec backend php artisan test
+docker compose exec frontend php artisan test
+docker compose exec backend ./vendor/bin/pint --test
+docker compose exec frontend ./vendor/bin/pint --test
+```
+
+## API dokümantasyonu
+
+- OpenAPI 3.0: `docs/openapi.yaml`
+- Postman koleksiyonu: `docs/kle-blog.postman_collection.json`
+
+Koleksiyon değişkenleri: `baseUrl` (`http://localhost:8000/api`), `token` (login/register yanıtından otomatik yazılır). Kimlik gerektiren istekler `Authorization: Bearer {{token}}` kullanır. Liste endpoint'leri `page` ve `per_page` (en fazla 50) kabul eder.
+
+## Make hedefleri
+
+| Komut | Açıklama |
+| --- | --- |
+| `make up` | `docker compose up -d --build` |
+| `make seed` | migrate + seed |
+| `make test` | backend ve frontend testleri |
+| `make pint` | Pint `--test` |
+| `make down` | stack'i durdur |
+
+## Dizinler
+
+- `kle-blog-backend/` — REST API ve Filament
+- `kle-blog-frontend/` — Livewire istemcisi
+- `docs/` — OpenAPI ve Postman

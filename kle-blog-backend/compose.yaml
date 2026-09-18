@@ -10,7 +10,8 @@ services:
       - .:/var/www
     ports:
       - "8000:8000"
-    command: ["sh", "-c", "until [ -f vendor/autoload.php ]; do sleep 1; done; php artisan serve --host=0.0.0.0 --port=8000"]
+    environment:
+      DB_HOST: backend-db
     networks:
       - kle-blog-network
     depends_on:

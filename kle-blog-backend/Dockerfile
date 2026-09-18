@@ -15,8 +15,10 @@ RUN docker-php-ext-configure intl \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd intl zip
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY docker/entrypoint.sh /usr/local/bin/app-entrypoint.sh
+RUN chmod +x /usr/local/bin/app-entrypoint.sh
 
 WORKDIR /var/www
 
-EXPOSE 9000
-CMD ["php-fpm"]
+EXPOSE 8000
+ENTRYPOINT ["app-entrypoint.sh"]

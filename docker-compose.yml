@@ -1,0 +1,72 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: kle-blog-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-kle_blog}
+      MYSQL_USER: ${DB_USERNAME:-kle_blog}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+    ports:
+      - "3306:3306"
+    volumes:
+      - kle-blog-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USERNAME:-kle_blog}", "-p${DB_PASSWORD:-secret}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    networks:
+      - kle-blog
+
+  backend:
+    build:
+      context: ./kle-blog-backend
+      dockerfile: Dockerfile
+    container_name: kle-blog-backend
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./kle-blog-backend:/var/www
+    ports:
+      - "8000:8000"
+    environment:
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-kle_blog}
+      DB_USERNAME: ${DB_USERNAME:-kle_blog}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - kle-blog
+
+  frontend:
+    build:
+      context: ./kle-blog-frontend
+      dockerfile: Dockerfile
+    container_name: kle-blog-frontend
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./kle-blog-frontend:/var/www
+    ports:
+      - "8081:8000"
+    environment:
+      APP_URL: http://localhost:8080
+      BACKEND_API_URL: http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - kle-blog
+
+volumes:
+  kle-blog-mysql-data:
+
+networks:
+  kle-blog:
+    driver: bridge

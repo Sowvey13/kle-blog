@@ -28,7 +28,9 @@ class CreatePost extends Component
         }
 
         $categoriesResponse = ApiService::get('categories');
-        $this->categories = $categoriesResponse['data'] ?? ($categoriesResponse ?? []);
+        $this->categories = ApiService::isOk($categoriesResponse)
+            ? ($categoriesResponse['data'] ?? [])
+            : [];
     }
 
     public function saveCategory()
@@ -51,16 +53,18 @@ class CreatePost extends Component
             'name' => $this->newCategoryName,
         ]);
 
-        if (isset($response['data'])) {
+        if (ApiService::isOk($response) && isset($response['data']['id'])) {
             $createdCategory = $response['data'];
             $this->categories[] = $createdCategory;
             $this->category_id = (string) $createdCategory['id'];
             $this->reset(['newCategoryName']);
             $this->showCategoryForm = false;
             $this->categorySuccessMessage = 'Kategori başarıyla eklendi ve seçildi!';
-        } else {
-            $this->addError('newCategoryName', $response['message'] ?? 'Kategori eklenirken bir hata oluştu.');
+
+            return;
         }
+
+        $this->addError('newCategoryName', $response['message'] ?? 'Kategori eklenirken bir hata oluştu.');
     }
 
     public function toggleCategoryForm()
@@ -89,13 +93,13 @@ class CreatePost extends Component
             'content' => $this->content,
         ]);
 
-        if (isset($response['data']) || (isset($response['message']) && ! isset($response['errors']))) {
+        if (ApiService::isOk($response) && $this->hasCreatedPostPayload($response)) {
             session()->flash('success', $response['message'] ?? 'Yazınız oluşturuldu ve onay için admin onayına gönderildi.');
 
             return redirect()->route('home');
         }
 
-        $this->addError('api_error', $response['message'] ?? 'Yazı paylaşılırken bir hata oluştu.');
+        $this->addError('api_error', $this->postFailureMessage($response));
     }
 
     public function render()
@@ -103,5 +107,38 @@ class CreatePost extends Component
         return view('livewire.create-post', [
             'categories' => $this->categories,
         ])->layout('components.layouts.app');
+    }
+
+    private function hasCreatedPostPayload(array $response): bool
+    {
+        $data = $response['data'] ?? null;
+
+        return is_array($data) && isset($data['id'], $data['title']);
+    }
+
+    private function postFailureMessage(array $response): string
+    {
+        $status = (int) ($response['status'] ?? 0);
+
+        return match ($status) {
+            401 => 'Oturumunuz sona ermiş olabilir. Lütfen tekrar giriş yapın.',
+            403 => 'Bu işlemi gerçekleştirme yetkiniz yok.',
+            422 => $this->firstValidationError($response) ?? ($response['message'] ?? 'Girdiğiniz bilgileri kontrol edin.'),
+            500 => 'Yazı şu anda kaydedilemedi. Lütfen daha sonra tekrar deneyin.',
+            default => $response['message'] ?? 'Yazı paylaşılırken bir hata oluştu.',
+        };
+    }
+
+    private function firstValidationError(array $response): ?string
+    {
+        $errors = $response['errors'] ?? [];
+
+        if (! is_array($errors) || $errors === []) {
+            return null;
+        }
+
+        $first = collect($errors)->flatten()->first();
+
+        return is_string($first) ? $first : null;
     }
 }

@@ -26,8 +26,8 @@ class PostDetail extends Component
     public function fetchPost()
     {
         $response = ApiService::get('posts/'.$this->slug);
-        if (! isset($response['error'])) {
-            $this->post = $response['data'] ?? ($response ?? null);
+        if (ApiService::isOk($response)) {
+            $this->post = $response['data'] ?? null;
         } else {
             $this->post = null;
         }
@@ -63,7 +63,7 @@ class PostDetail extends Component
             'content' => $this->content,
         ]);
 
-        if (isset($res['error']) && $res['error']) {
+        if (! ApiService::isOk($res)) {
             $this->addError('api_error', $res['message'] ?? 'Yorum gönderilemedi.');
 
             return;
@@ -81,7 +81,7 @@ class PostDetail extends Component
         }
 
         $res = ApiService::delete('comments/'.$commentId);
-        if (! isset($res['error'])) {
+        if (ApiService::isOk($res)) {
             $this->successMessage = 'Yorum silindi.';
             $this->fetchPost();
         } else {
@@ -96,7 +96,7 @@ class PostDetail extends Component
         }
 
         $res = ApiService::delete('posts/'.$postId);
-        if (! isset($res['error'])) {
+        if (ApiService::isOk($res)) {
             return redirect()->route('home');
         }
 

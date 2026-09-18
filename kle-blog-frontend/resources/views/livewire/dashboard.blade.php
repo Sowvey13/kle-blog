@@ -68,6 +68,8 @@
                     </div>
                 @endforelse
             </div>
+
+            <x-api-pagination :pagination="$pagination" />
         </div>
     </div>
 </div>

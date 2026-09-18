@@ -13,13 +13,28 @@ class CategoryDetail extends Component
 
     public array $posts = [];
 
-    public function mount(string $slug)
+    public string $errorMessage = '';
+
+    public function mount(string $slug): void
     {
         $this->slug = $slug;
-        $categoryResponse = ApiService::get('categories/'.$slug);
 
-        $this->category = $categoryResponse['data'] ?? [];
-        $this->posts = $categoryResponse['data']['posts'] ?? [];
+        $response = ApiService::get('categories/'.$slug);
+
+        if (! ApiService::isOk($response) || empty($response['category'])) {
+            $this->category = [];
+            $this->posts = [];
+            $this->errorMessage = 'Kategori bulunamadı veya şu anda görüntülenemiyor.';
+
+            return;
+        }
+
+        $this->category = is_array($response['category']) ? $response['category'] : [];
+
+        $postsPayload = $response['posts'] ?? [];
+        $this->posts = is_array($postsPayload['data'] ?? null)
+            ? $postsPayload['data']
+            : [];
     }
 
     public function render()

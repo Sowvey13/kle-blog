@@ -55,8 +55,7 @@ class Register extends Component
             'password_confirmation' => $this->password_confirmation,
         ]);
 
-        if (isset($response['error']) && $response['error'] === true) {
-            // Backend validasyon hatalarını (örn: bu e-posta zaten kayıtlı) yakalama
+        if (! ApiService::isOk($response)) {
             if (isset($response['errors']) && is_array($response['errors'])) {
                 $firstError = collect($response['errors'])->flatten()->first();
                 if ($firstError) {

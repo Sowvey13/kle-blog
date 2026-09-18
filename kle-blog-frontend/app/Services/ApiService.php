@@ -2,10 +2,106 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class ApiService
 {
+    private const TIMEOUT_SECONDS = 8;
+
+    private const CONNECT_TIMEOUT_SECONDS = 5;
+
+    private const GENERIC_ERROR_MESSAGE = 'İstek işlenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.';
+
+    public static function isOk(?array $response): bool
+    {
+        return (bool) ($response['success'] ?? false);
+    }
+
+    public static function get(string $endpoint, array $query = []): array
+    {
+        return self::send('get', $endpoint, $query);
+    }
+
+    public static function post(string $endpoint, array $data = []): array
+    {
+        return self::send('post', $endpoint, $data);
+    }
+
+    public static function put(string $endpoint, array $data = []): array
+    {
+        return self::send('put', $endpoint, $data);
+    }
+
+    public static function delete(string $endpoint): array
+    {
+        return self::send('delete', $endpoint);
+    }
+
+    private static function send(string $method, string $endpoint, array $payload = []): array
+    {
+        $url = self::getBaseUrl().'/'.self::formatEndpoint($endpoint);
+
+        try {
+            $request = Http::withHeaders(self::getHeaders())
+                ->timeout(self::TIMEOUT_SECONDS)
+                ->connectTimeout(self::CONNECT_TIMEOUT_SECONDS)
+                ->acceptJson();
+
+            $response = match ($method) {
+                'get' => $request->get($url, $payload),
+                'post' => $request->post($url, $payload),
+                'put' => $request->put($url, $payload),
+                'delete' => $request->delete($url),
+                default => throw new \InvalidArgumentException('Unsupported HTTP method.'),
+            };
+
+            return $response->successful()
+                ? self::successPayload($response)
+                : self::failurePayload($response);
+        } catch (Throwable $e) {
+            Log::error('Backend API isteği başarısız oldu.', [
+                'method' => strtoupper($method),
+                'endpoint' => $url,
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'status' => 503,
+                'message' => self::GENERIC_ERROR_MESSAGE,
+                'errors' => [],
+            ];
+        }
+    }
+
+    private static function successPayload(Response $response): array
+    {
+        $payload = $response->json();
+
+        if (! is_array($payload)) {
+            $payload = ['data' => $payload];
+        }
+
+        return array_merge($payload, [
+            'success' => true,
+            'status' => $response->status(),
+        ]);
+    }
+
+    private static function failurePayload(Response $response): array
+    {
+        return [
+            'success' => false,
+            'status' => $response->status(),
+            'message' => $response->json('message') ?? self::GENERIC_ERROR_MESSAGE,
+            'errors' => $response->json('errors') ?? [],
+        ];
+    }
+
     private static function getBaseUrl(): string
     {
         return rtrim(config('services.backend.url', 'http://kle-blog-backend-app:8000'), '/').'/api';
@@ -32,108 +128,5 @@ class ApiService
         }
 
         return $endpoint;
-    }
-
-    public static function get(string $endpoint, array $query = []): ?array
-    {
-        $url = self::getBaseUrl().'/'.self::formatEndpoint($endpoint);
-
-        try {
-            $response = Http::withHeaders(self::getHeaders())->get($url, $query);
-
-            if ($response->successful()) {
-                return $response->json();
-            }
-
-            return [
-                'error' => true,
-                'status' => $response->status(),
-                'message' => $response->json('message') ?? 'Bir hata oluştu.',
-                'errors' => $response->json('errors') ?? [],
-            ];
-        } catch (\Throwable $e) {
-            return [
-                'error' => true,
-                'status' => 500,
-                'message' => 'Backend bağlantı hatası: '.$e->getMessage(),
-            ];
-        }
-    }
-
-    public static function post(string $endpoint, array $data = []): ?array
-    {
-        $url = self::getBaseUrl().'/'.self::formatEndpoint($endpoint);
-
-        try {
-            $response = Http::withHeaders(self::getHeaders())->post($url, $data);
-
-            if ($response->successful()) {
-                return $response->json();
-            }
-
-            return [
-                'error' => true,
-                'status' => $response->status(),
-                'message' => $response->json('message') ?? 'İşlem başarısız oldu.',
-                'errors' => $response->json('errors') ?? [],
-            ];
-        } catch (\Throwable $e) {
-            return [
-                'error' => true,
-                'status' => 500,
-                'message' => 'Backend bağlantı hatası: '.$e->getMessage(),
-            ];
-        }
-    }
-
-    public static function put(string $endpoint, array $data = []): ?array
-    {
-        $url = self::getBaseUrl().'/'.self::formatEndpoint($endpoint);
-
-        try {
-            $response = Http::withHeaders(self::getHeaders())->put($url, $data);
-
-            if ($response->successful()) {
-                return $response->json();
-            }
-
-            return [
-                'error' => true,
-                'status' => $response->status(),
-                'message' => $response->json('message') ?? 'Güncelleme başarısız oldu.',
-                'errors' => $response->json('errors') ?? [],
-            ];
-        } catch (\Throwable $e) {
-            return [
-                'error' => true,
-                'status' => 500,
-                'message' => 'Backend bağlantı hatası: '.$e->getMessage(),
-            ];
-        }
-    }
-
-    public static function delete(string $endpoint): ?array
-    {
-        $url = self::getBaseUrl().'/'.self::formatEndpoint($endpoint);
-
-        try {
-            $response = Http::withHeaders(self::getHeaders())->delete($url);
-
-            if ($response->successful()) {
-                return $response->json() ?? ['message' => 'Silindi.'];
-            }
-
-            return [
-                'error' => true,
-                'status' => $response->status(),
-                'message' => $response->json('message') ?? 'Silme işlemi başarısız.',
-            ];
-        } catch (\Throwable $e) {
-            return [
-                'error' => true,
-                'status' => 500,
-                'message' => 'Backend bağlantı hatası: '.$e->getMessage(),
-            ];
-        }
     }
 }

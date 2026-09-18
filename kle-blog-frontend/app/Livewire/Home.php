@@ -2,14 +2,14 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\InteractsWithApiPagination;
 use App\Services\ApiService;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 class Home extends Component
 {
-    use WithPagination;
+    use InteractsWithApiPagination;
 
     public string $search = '';
 
@@ -20,13 +20,7 @@ class Home extends Component
 
     public array $categories = [];
 
-    public array $pagination = [
-        'current_page' => 1,
-        'last_page' => 1,
-        'total' => 0,
-    ];
-
-    public function mount()
+    public function mount(): void
     {
         if (request()->has('category_id')) {
             $this->category_id = request()->query('category_id');
@@ -36,34 +30,35 @@ class Home extends Component
         $this->loadPosts();
     }
 
-    public function updatedSearch()
+    public function updatedSearch(): void
     {
         $this->resetPage();
         $this->loadPosts();
     }
 
-    public function updatedCategoryId()
+    public function updatedCategoryId(): void
     {
         $this->resetPage();
         $this->loadPosts();
     }
 
-    public function loadCategories()
+    public function loadCategories(): void
     {
         $response = ApiService::get('categories');
-        if (! isset($response['error'])) {
-            $this->categories = $response['data'] ?? ($response ?? []);
+
+        if (ApiService::isOk($response)) {
+            $this->categories = $response['data'] ?? [];
         }
     }
 
-    public function loadPosts()
+    public function loadPosts(): void
     {
         $queryParams = [
-            'page' => $this->getPage(),
+            'page' => $this->page,
             'per_page' => 9,
         ];
 
-        if (! empty($this->search)) {
+        if ($this->search !== '') {
             $queryParams['search'] = $this->search;
         }
 
@@ -73,16 +68,18 @@ class Home extends Component
 
         $response = ApiService::get('posts', $queryParams);
 
-        if (! isset($response['error'])) {
+        if (ApiService::isOk($response)) {
             $this->posts = $response['data'] ?? [];
-            $this->pagination = [
-                'current_page' => $response['meta']['current_page'] ?? ($response['current_page'] ?? 1),
-                'last_page' => $response['meta']['last_page'] ?? ($response['last_page'] ?? 1),
-                'total' => $response['meta']['total'] ?? ($response['total'] ?? 0),
-            ];
+            $this->hydratePagination($response);
         } else {
             $this->posts = [];
+            $this->hydratePagination([]);
         }
+    }
+
+    public function onApiPageChanged(): void
+    {
+        $this->loadPosts();
     }
 
     public function render()

@@ -44,7 +44,7 @@ class Login extends Component
             'password' => $this->password,
         ]);
 
-        if (isset($response['error']) && $response['error'] === true) {
+        if (! ApiService::isOk($response)) {
             if (isset($response['status']) && $response['status'] === 429) {
                 $this->errorMessage = 'Çok fazla hatalı giriş denemesi yaptınız. Lütfen bir süre bekleyip tekrar deneyin.';
 

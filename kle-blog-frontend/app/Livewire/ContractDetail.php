@@ -15,7 +15,7 @@ class ContractDetail extends Component
     {
         $this->slug = $slug;
         $response = ApiService::get('contracts/'.$slug);
-        $this->contract = $response['data'] ?? [];
+        $this->contract = ApiService::isOk($response) ? ($response['data'] ?? []) : [];
     }
 
     public function render()

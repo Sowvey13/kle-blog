@@ -16,7 +16,7 @@ class PostController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = Post::with(['user', 'category'])
-            ->where('is_approved', true);
+            ->published();
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -50,7 +50,7 @@ class PostController extends Controller
             $query->where('is_approved', true)->with('user');
         }])
             ->where('slug', $slug)
-            ->where('is_approved', true)
+            ->published()
             ->firstOrFail();
 
         return new PostResource($post);

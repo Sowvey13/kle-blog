@@ -8,24 +8,26 @@ trait HasSlug
 {
     public static function bootHasSlug(): void
     {
-        static::creating(function ($model) {
-            $model->slug = static::generateUniqueSlug($model->title ?? $model->name);
-        });
+        static::saving(function ($model) {
+            $source = filled($model->slug)
+                ? (string) $model->slug
+                : (string) ($model->title ?? $model->name ?? '');
 
-        static::updating(function ($model) {
-            if ($model->isDirty('title') || $model->isDirty('name')) {
-                $model->slug = static::generateUniqueSlug($model->title ?? $model->name, $model->id);
-            }
+            $model->slug = static::generateUniqueSlug($source, $model->getKey());
         });
     }
 
-    protected static function generateUniqueSlug(string $title, ?int $ignoreId = null): string
+    protected static function generateUniqueSlug(string $value, int|string|null $ignoreId = null): string
     {
-        $slug = Str::slug($title);
+        $slug = Str::slug($value, '-', 'tr');
         $originalSlug = $slug;
         $count = 1;
 
-        while (static::where('slug', $slug)->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))->exists()) {
+        while (static::query()
+            ->where('slug', $slug)
+            ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+            ->exists()
+        ) {
             $slug = "{$originalSlug}-{$count}";
             $count++;
         }

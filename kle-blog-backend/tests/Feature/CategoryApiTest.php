@@ -39,6 +39,7 @@ class CategoryApiTest extends TestCase
             'category_id' => $category->id,
             'user_id' => $user->id,
             'is_approved' => true,
+            'published_at' => now(),
         ]);
 
         $response = $this->getJson('/api/categories/teknoloji');

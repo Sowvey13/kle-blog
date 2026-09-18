@@ -23,7 +23,7 @@ class CategoryController extends Controller
         $category = Category::where('slug', $slug)->firstOrFail();
 
         $posts = $category->posts()
-            ->where('is_approved', true)
+            ->published()
             ->with(['user', 'category'])
             ->latest()
             ->paginate(9);

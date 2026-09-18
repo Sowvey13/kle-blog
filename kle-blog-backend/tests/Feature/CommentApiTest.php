@@ -17,7 +17,12 @@ class CommentApiTest extends TestCase
     {
         $user = User::factory()->create();
         $category = Category::factory()->create(['is_active' => true]);
-        $post = Post::factory()->create(['user_id' => $user->id, 'category_id' => $category->id, 'is_approved' => true]);
+        $post = Post::factory()->create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'is_approved' => true,
+            'published_at' => now(),
+        ]);
 
         Sanctum::actingAs($user);
 
@@ -27,5 +32,39 @@ class CommentApiTest extends TestCase
         ]);
 
         $response->assertStatus(201);
+    }
+
+    public function test_comment_is_rejected_for_unapproved_post(): void
+    {
+        $user = User::factory()->create();
+        $post = Post::factory()->create([
+            'is_approved' => false,
+            'published_at' => now(),
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/comments', [
+            'post_id' => $post->id,
+            'content' => 'Onaysız yazıya yorum.',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['post_id']);
+    }
+
+    public function test_comment_is_rejected_for_scheduled_post(): void
+    {
+        $user = User::factory()->create();
+        $post = Post::factory()->create([
+            'is_approved' => true,
+            'published_at' => now()->addDay(),
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/comments', [
+            'post_id' => $post->id,
+            'content' => 'İleri tarihli yazıya yorum.',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['post_id']);
     }
 }

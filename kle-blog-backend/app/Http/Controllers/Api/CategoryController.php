@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\IndexCategoryRequest;
+use App\Http\Requests\ShowCategoryRequest;
 use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Http\Resources\CategoryResource;
@@ -13,20 +15,28 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class CategoryController extends Controller
 {
-    public function index(): AnonymousResourceCollection
+    public function index(IndexCategoryRequest $request): AnonymousResourceCollection
     {
-        return CategoryResource::collection(Category::where('is_active', true)->get());
+        $categories = Category::query()
+            ->active()
+            ->latest()
+            ->paginate($request->perPage(10));
+
+        return CategoryResource::collection($categories);
     }
 
-    public function show(string $slug): JsonResponse
+    public function show(ShowCategoryRequest $request, string $slug): JsonResponse
     {
-        $category = Category::where('slug', $slug)->firstOrFail();
+        $category = Category::query()
+            ->active()
+            ->where('slug', $slug)
+            ->firstOrFail();
 
         $posts = $category->posts()
             ->published()
             ->with(['user', 'category'])
             ->latest()
-            ->paginate(9);
+            ->paginate($request->perPage(15));
 
         return response()->json([
             'category' => new CategoryResource($category),

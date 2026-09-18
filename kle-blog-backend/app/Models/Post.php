@@ -46,7 +46,8 @@ class Post extends Model
     {
         return $query
             ->where('is_approved', true)
-            ->where('published_at', '<=', now());
+            ->where('published_at', '<=', now())
+            ->whereHas('category', fn (Builder $category) => $category->where('is_active', true));
     }
 
     public function user(): BelongsTo

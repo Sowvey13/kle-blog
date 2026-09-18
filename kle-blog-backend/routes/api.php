@@ -21,13 +21,17 @@ Route::get('/contracts', [ContractController::class, 'index']);
 Route::get('/contracts/{slug}', [ContractController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/me', [ProfileController::class, 'me']);
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::get('/profile', [AuthController::class, 'me']);
+    Route::put('/profile', [AuthController::class, 'update']);
+    Route::patch('/profile', [AuthController::class, 'update']);
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::put('/profile', [ProfileController::class, 'update']);
 
     Route::get('/my-posts', [ProfileController::class, 'posts']);
 
     Route::post('/posts', [PostController::class, 'store']);
+    Route::put('/posts/{post}', [PostController::class, 'update']);
+    Route::patch('/posts/{post}', [PostController::class, 'update']);
     Route::delete('/posts/{post}', [PostController::class, 'destroy']);
 
     Route::post('/comments', [CommentController::class, 'store']);

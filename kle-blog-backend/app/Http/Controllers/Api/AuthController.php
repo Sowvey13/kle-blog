@@ -6,11 +6,11 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
@@ -22,7 +22,7 @@ class AuthController extends Controller
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'password' => $validated['password'],
             'role' => UserRole::USER,
         ]);
 
@@ -55,11 +55,20 @@ class AuthController extends Controller
         ]);
     }
 
-    public function me(Request $request): JsonResponse
+    public function me(Request $request): UserResource
     {
-        return response()->json([
-            'user' => new UserResource($request->user()),
-        ]);
+        return new UserResource($request->user());
+    }
+
+    public function update(UpdateProfileRequest $request): UserResource
+    {
+        $user = $request->user();
+        $user->update($request->validated());
+
+        return (new UserResource($user->fresh()))
+            ->additional([
+                'message' => 'Profil bilgileriniz başarıyla güncellendi.',
+            ]);
     }
 
     public function logout(Request $request): JsonResponse

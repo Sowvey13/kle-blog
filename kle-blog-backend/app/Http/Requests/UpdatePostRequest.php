@@ -2,25 +2,32 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Post;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StorePostRequest extends FormRequest
+class UpdatePostRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        /** @var Post $post */
+        $post = $this->route('post');
+
+        return $this->user()?->can('update', $post) ?? false;
     }
 
     public function rules(): array
     {
         return [
-            'title' => ['required', 'string', 'max:255'],
+            'title' => ['sometimes', 'required', 'string', 'max:255'],
             'category_id' => [
+                'sometimes',
                 'required',
                 Rule::exists('categories', 'id')->where('is_active', true),
             ],
-            'content' => ['required', 'string'],
+            'content' => ['sometimes', 'required', 'string'],
+            'is_approved' => ['sometimes', 'boolean'],
+            'published_at' => ['sometimes', 'nullable', 'date'],
         ];
     }
 

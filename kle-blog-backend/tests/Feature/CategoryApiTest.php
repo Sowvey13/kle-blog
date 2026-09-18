@@ -17,9 +17,29 @@ class CategoryApiTest extends TestCase
         Category::factory()->create(['name' => 'Aktif Kategori', 'is_active' => true]);
         Category::factory()->create(['name' => 'Pasif Kategori', 'is_active' => false]);
 
-        $response = $this->getJson('/api/categories');
+        $this->getJson('/api/categories')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Aktif Kategori');
+    }
 
-        $response->assertStatus(200);
+    public function test_inactive_category_detail_returns_not_found(): void
+    {
+        Category::factory()->create([
+            'name' => 'Gizli',
+            'slug' => 'gizli',
+            'is_active' => false,
+        ]);
+
+        $this->getJson('/api/categories/gizli')
+            ->assertNotFound();
+    }
+
+    public function test_category_per_page_is_validated(): void
+    {
+        $this->getJson('/api/categories?per_page=51')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['per_page']);
     }
 
     public function test_category_detail_returns_related_posts(): void

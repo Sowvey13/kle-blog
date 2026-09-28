@@ -57,8 +57,8 @@
                         </div>
 
                         <div class="flex items-center gap-2">
-                            <button wire:click="deletePost({{ $post['id'] }})" wire:confirm="Bu yazıyı silmek istediğinizden emin misiniz?" class="p-2 text-gray-400 hover:text-red-600 transition" title="Sil">
-                                
+                            <button type="button" wire:click="deletePost({{ $post['id'] }})" wire:confirm="Bu yazıyı silmek istediğinizden emin misiniz?" class="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition">
+                                Sil
                             </button>
                         </div>
                     </div>

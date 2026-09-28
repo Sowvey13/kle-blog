@@ -11,6 +11,7 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
@@ -39,13 +40,14 @@ class AuthController extends Controller
     {
         $credentials = $request->validated();
 
-        if (! auth()->attempt($credentials)) {
+        $user = User::query()->where('email', $credentials['email'])->first();
+
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             return response()->json([
                 'message' => 'Geçersiz e-posta veya şifre.',
             ], 401);
         }
 
-        $user = auth()->user();
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([

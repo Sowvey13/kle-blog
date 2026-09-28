@@ -9,7 +9,6 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\Str;
 
 class ContractResource extends Resource
 {
@@ -34,18 +33,13 @@ class ContractResource extends Resource
                                 Forms\Components\TextInput::make('title')
                                     ->required()
                                     ->maxLength(255)
-                                    ->label('Sözleşme Başlığı')
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(fn (string $operation, $state, Forms\Set $set) => $operation === 'create' ? $set('slug', Str::slug($state)) : null
-                                    ),
+                                    ->label('Sözleşme Başlığı'),
 
                                 Forms\Components\TextInput::make('slug')
-                                    ->required()
                                     ->maxLength(255)
                                     ->unique(Contract::class, 'slug', ignoreRecord: true)
                                     ->label('Slug / Link')
-                                    ->readonly()
-                                    ->dehydrated(true),
+                                    ->helperText('Boş bırakılırsa başlıktan benzersiz olarak üretilir.'),
                             ]),
 
                         Forms\Components\RichEditor::make('content')
@@ -94,13 +88,6 @@ class ContractResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
     }
 
     public static function getPages(): array

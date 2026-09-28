@@ -1,44 +1,43 @@
+name: kle-blog
+
 services:
   mysql:
     image: mysql:8.0
-    container_name: kle-blog-mysql
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-kle_blog}
-      MYSQL_USER: ${DB_USERNAME:-kle_blog}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-kle_blog}
+      MYSQL_USER: ${MYSQL_USER:-kle_blog}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
     ports:
-      - "3306:3306"
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
     volumes:
       - kle-blog-mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USERNAME:-kle_blog}", "-p${DB_PASSWORD:-secret}"]
-      interval: 3s
-      timeout: 3s
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_PASSWORD\" mysqladmin ping -h 127.0.0.1 -u \"$$MYSQL_USER\" --silent"]
+      interval: 5s
+      timeout: 5s
       retries: 20
+      start_period: 20s
     networks:
       - kle-blog
 
   backend:
     build:
       context: ./kle-blog-backend
-      dockerfile: Dockerfile
-    container_name: kle-blog-backend
     restart: unless-stopped
-    working_dir: /var/www
     volumes:
       - ./kle-blog-backend:/var/www
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     environment:
-      APP_URL: http://localhost:8000
+      APP_URL: http://localhost:${BACKEND_PORT:-8000}
       DB_CONNECTION: mysql
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_DATABASE: ${DB_DATABASE:-kle_blog}
-      DB_USERNAME: ${DB_USERNAME:-kle_blog}
-      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      DB_DATABASE: ${MYSQL_DATABASE:-kle_blog}
+      DB_USERNAME: ${MYSQL_USER:-kle_blog}
+      DB_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
     depends_on:
       mysql:
         condition: service_healthy
@@ -48,16 +47,13 @@ services:
   frontend:
     build:
       context: ./kle-blog-frontend
-      dockerfile: Dockerfile
-    container_name: kle-blog-frontend
     restart: unless-stopped
-    working_dir: /var/www
     volumes:
       - ./kle-blog-frontend:/var/www
     ports:
-      - "8081:8000"
+      - "${FRONTEND_PORT:-8080}:8000"
     environment:
-      APP_URL: http://localhost:8080
+      APP_URL: http://localhost:${FRONTEND_PORT:-8080}
       BACKEND_API_URL: http://backend:8000
     depends_on:
       - backend

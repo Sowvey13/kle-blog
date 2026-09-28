@@ -9,6 +9,7 @@ Thumbs.db
 *.sublime-workspace
 
 # Local Dev & Tooling Configs
+.env
 *.local
 .aider*
 .env.backup

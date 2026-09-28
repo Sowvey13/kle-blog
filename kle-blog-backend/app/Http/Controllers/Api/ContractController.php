@@ -11,15 +11,16 @@ class ContractController extends Controller
 {
     public function index(): AnonymousResourceCollection
     {
-        $contracts = Contract::where('is_active', true)->get();
-
-        return ContractResource::collection($contracts);
+        return ContractResource::collection(
+            Contract::query()->active()->orderBy('title')->get(),
+        );
     }
 
     public function show(string $slug): ContractResource
     {
-        $contract = Contract::where('slug', $slug)
-            ->where('is_active', true)
+        $contract = Contract::query()
+            ->active()
+            ->where('slug', $slug)
             ->firstOrFail();
 
         return new ContractResource($contract);

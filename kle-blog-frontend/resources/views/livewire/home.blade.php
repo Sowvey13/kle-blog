@@ -54,11 +54,11 @@
         @endforeach
     </div>
 
-    @error('api_error')
+    @if($errorMessage)
         <div class="max-w-md mx-auto mb-6 p-4 bg-red-50 text-red-700 text-sm font-semibold rounded-2xl border border-red-100 text-center">
-            {{ $message }}
+            {{ $errorMessage }}
         </div>
-    @enderror
+    @endif
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         @forelse($posts as $post)
@@ -100,9 +100,11 @@
                 </div>
             </article>
         @empty
-            <div class="col-span-full text-center py-12">
-                <p class="text-gray-500">Henüz eklenmiş bir blog yazısı bulunamadı.</p>
-            </div>
+            @unless($errorMessage)
+                <div class="col-span-full text-center py-12">
+                    <p class="text-gray-500">Henüz eklenmiş bir blog yazısı bulunamadı.</p>
+                </div>
+            @endunless
         @endforelse
     </div>
 

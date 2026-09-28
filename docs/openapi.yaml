@@ -1,28 +1,46 @@
 openapi: 3.0.3
 info:
   title: KLE Blog API
-  version: 1.0.0
+  version: 1.1.0
   description: |
-    KLE Blog backend REST API. Public endpoints return published content only.
-    Authenticated routes require `Authorization: Bearer {token}` from login or register.
-  contact:
-    name: KLE Blog
+    KLE Blog backend REST API.
+
+    Every request must send `Accept: application/json`; requests with a body also send
+    `Content-Type: application/json`. Protected operations additionally require
+    `Authorization: Bearer {token}` where the token comes from `/login` or `/register`.
+
+    Public read endpoints only expose published content: approved posts whose
+    `published_at` is in the past and whose category is active. Inactive categories
+    and inactive contracts respond with 404.
+
+    Paginated endpoints accept `page` (>= 1) and `per_page` (1-50). Values outside that
+    range return 422. Pages beyond `meta.last_page` return an empty `data` array.
 servers:
   - url: http://localhost:8000/api
     description: Local Docker backend
 tags:
   - name: Auth
+    description: Registration, login and token revocation.
   - name: Profile
+    description: Authenticated user profile and own posts.
   - name: Posts
+    description: Published posts and author post management.
   - name: Categories
+    description: Category browsing and admin management.
   - name: Comments
+    description: Comment creation and moderation.
   - name: Contracts
+    description: Public legal contracts.
 
 paths:
   /register:
     post:
+      operationId: register
+      security: []
       tags: [Auth]
-      summary: Register a user
+      summary: Register a user and issue a token
+      parameters:
+        - $ref: '#/components/parameters/AcceptJson'
       requestBody:
         required: true
         content:
@@ -41,14 +59,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthSuccessResponse'
+              example:
+                message: Kayıt başarılı.
+                user:
+                  id: 2
+                  name: Ayşe Yılmaz
+                  email: ayse@example.com
+                  role: user
+                  created_at: '2026-09-28T10:00:00+00:00'
+                token: 2|p3QeX...
         '422':
           $ref: '#/components/responses/ValidationError'
 
   /login:
     post:
+      operationId: login
+      security: []
       tags: [Auth]
       summary: Login and receive a Sanctum token
-      description: Throttled to 6 attempts per minute.
+      description: Rate limited to 6 attempts per minute per client (`throttle:6,1`). The 7th attempt returns 429 even with valid credentials.
+      parameters:
+        - $ref: '#/components/parameters/AcceptJson'
       requestBody:
         required: true
         content:
@@ -61,10 +92,24 @@ paths:
       responses:
         '200':
           description: Authenticated
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthSuccessResponse'
+              example:
+                message: Giriş başarılı.
+                user:
+                  id: 1
+                  name: Admin
+                  email: admin@example.com
+                  role: admin
+                  created_at: '2026-09-28T10:00:00+00:00'
+                token: 1|a8Kd2...
         '401':
           description: Invalid credentials
           content:
@@ -73,17 +118,21 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
               example:
                 message: Geçersiz e-posta veya şifre.
-        '429':
-          description: Too many attempts
         '422':
           $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /logout:
     post:
+      operationId: logout
       tags: [Auth]
       summary: Revoke the current access token
+      description: Only the token used for this request is deleted. Tokens issued to other devices stay valid. Reusing the revoked token returns 401.
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AcceptJson'
       responses:
         '200':
           description: Logged out
@@ -91,78 +140,73 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Oturum kapatıldı.
         '401':
           $ref: '#/components/responses/Unauthenticated'
 
   /me:
     get:
+      operationId: getMe
       tags: [Profile]
       summary: Current authenticated user
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AcceptJson'
       responses:
         '200':
-          description: User resource
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: '#/components/schemas/User'
+          $ref: '#/components/responses/UserResponse'
         '401':
           $ref: '#/components/responses/Unauthenticated'
 
   /profile:
     get:
+      operationId: getProfile
       tags: [Profile]
-      summary: Alias of GET /me
+      summary: Current authenticated user (alias of GET /me)
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AcceptJson'
       responses:
         '200':
-          description: User resource
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: '#/components/schemas/User'
+          $ref: '#/components/responses/UserResponse'
         '401':
           $ref: '#/components/responses/Unauthenticated'
     put:
+      operationId: updateProfile
       tags: [Profile]
       summary: Update profile name and email
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AcceptJson'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/UpdateProfileRequest'
+            example:
+              name: Ayşe Kaya
+              email: ayse.kaya@example.com
       responses:
         '200':
-          description: Updated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    $ref: '#/components/schemas/User'
+          $ref: '#/components/responses/ProfileUpdated'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '422':
           $ref: '#/components/responses/ValidationError'
     patch:
+      operationId: patchProfile
       tags: [Profile]
-      summary: Partial profile update
+      summary: Update profile name and email
+      description: Same contract as PUT; both `name` and `email` are required.
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AcceptJson'
       requestBody:
         required: true
         content:
@@ -171,7 +215,7 @@ paths:
               $ref: '#/components/schemas/UpdateProfileRequest'
       responses:
         '200':
-          description: Updated
+          $ref: '#/components/responses/ProfileUpdated'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '422':
@@ -179,12 +223,16 @@ paths:
 
   /my-posts:
     get:
-      tags: [Posts]
-      summary: Authenticated user's posts
+      operationId: listMyPosts
+      tags: [Profile]
+      summary: Posts owned by the authenticated user
+      description: Includes pending and unpublished posts. Newest first.
       security:
         - bearerAuth: []
       parameters:
+        - $ref: '#/components/parameters/AcceptJson'
         - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPageDefault10'
       responses:
         '200':
           description: Paginated posts
@@ -194,35 +242,43 @@ paths:
                 $ref: '#/components/schemas/PaginatedPosts'
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
   /posts:
     get:
+      operationId: listPosts
+      security: []
       tags: [Posts]
       summary: List published posts
-      description: |
-        Only approved posts with `published_at <= now()` in an active category are returned.
-        Posts belonging to inactive categories are excluded from list and search.
+      description: All filters can be combined; they are applied with AND semantics.
       parameters:
+        - $ref: '#/components/parameters/AcceptJson'
         - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/PerPageDefault15'
         - name: search
           in: query
+          description: Matches title or content.
           schema:
             type: string
             maxLength: 255
         - name: category_id
           in: query
+          description: Must reference an existing category.
           schema:
             type: integer
         - name: user_id
           in: query
+          description: Must reference an existing user.
           schema:
             type: integer
         - name: date
           in: query
+          description: Matches the post creation date.
           schema:
             type: string
             format: date
+            example: '2026-09-28'
       responses:
         '200':
           description: Paginated published posts
@@ -233,10 +289,14 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
     post:
+      operationId: createPost
       tags: [Posts]
       summary: Create a post (pending approval)
+      description: The slug is generated from the title and suffixed with -1, -2 ... on collision.
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AcceptJson'
       requestBody:
         required: true
         content:
@@ -253,31 +313,46 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    $ref: '#/components/schemas/Post'
+                $ref: '#/components/schemas/PostEnvelope'
+              example:
+                message: Yazınız oluşturuldu ve onay için admin onayına gönderildi.
+                data:
+                  id: 12
+                  title: Laravel 13 ile API Tasarımı
+                  slug: laravel-13-ile-api-tasarimi
+                  content: En az birkaç cümlelik içerik.
+                  is_approved: false
+                  published_at: null
+                  created_at: '2026-09-28 10:00:00'
+                  category:
+                    id: 1
+                    name: Yazılım
+                    slug: yazilim
+                    is_active: true
+                  user:
+                    id: 2
+                    name: Ayşe Yılmaz
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '422':
-          description: Validation failed (inactive category, missing fields)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationErrorBody'
+          $ref: '#/components/responses/ValidationError'
 
-  /posts/{slug}:
+  /posts/{post}:
+    parameters:
+      - $ref: '#/components/parameters/AcceptJson'
     get:
+      operationId: showPost
+      security: []
       tags: [Posts]
       summary: Show a published post by slug
       parameters:
-        - name: slug
+        - name: post
           in: path
           required: true
+          description: Post slug.
           schema:
             type: string
+            example: laravel-13-ile-api-tasarimi
       responses:
         '200':
           description: Post with approved comments
@@ -285,17 +360,20 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data]
                 properties:
                   data:
-                    $ref: '#/components/schemas/Post'
+                    $ref: '#/components/schemas/PostWithComments'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /posts/{post}:
     put:
+      operationId: updatePost
       tags: [Posts]
       summary: Update a post by id
-      description: Owner or admin. Regular users reset `is_approved` to false and `published_at` to null.
+      description: |
+        Owner or admin only. Changing the title regenerates a unique slug.
+        When a regular user updates, `is_approved` becomes false and `published_at` becomes null.
+        `is_approved` and `published_at` are honored only for admins.
       security:
         - bearerAuth: []
       parameters:
@@ -308,44 +386,48 @@ paths:
               $ref: '#/components/schemas/UpdatePostRequest'
       responses:
         '200':
-          description: Updated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    $ref: '#/components/schemas/Post'
+          $ref: '#/components/responses/PostUpdated'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
     patch:
+      operationId: patchPost
       tags: [Posts]
-      summary: Partial post update
+      summary: Partially update a post by id
+      description: Same rules as PUT; omitted fields are left unchanged.
       security:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/PostId'
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/UpdatePostRequest'
+            example:
+              title: Güncellenmiş Başlık
       responses:
         '200':
-          description: Updated
+          $ref: '#/components/responses/PostUpdated'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
     delete:
+      operationId: deletePost
       tags: [Posts]
       summary: Delete a post by id
+      description: Owner or admin only.
       security:
         - bearerAuth: []
       parameters:
@@ -357,24 +439,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Yazı silindi.
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /categories:
     get:
+      operationId: listCategories
+      security: []
       tags: [Categories]
       summary: List active categories
       parameters:
+        - $ref: '#/components/parameters/AcceptJson'
         - $ref: '#/components/parameters/Page'
-        - name: per_page
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 50
-            default: 10
+        - $ref: '#/components/parameters/PerPageDefault10'
       responses:
         '200':
           description: Paginated active categories
@@ -385,25 +468,26 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
     post:
+      operationId: createCategory
       tags: [Categories]
-      summary: Create a category (admin)
+      summary: Create a category (admin only)
+      description: The slug is generated from the name and suffixed with -1, -2 ... on collision.
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AcceptJson'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [name]
-              properties:
-                name:
-                  type: string
-                is_active:
-                  type: boolean
+              $ref: '#/components/schemas/StoreCategoryRequest'
+            example:
+              name: Yapay Zeka
+              is_active: true
       responses:
         '201':
-          description: Created
+          $ref: '#/components/responses/CategoryCreated'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -411,19 +495,25 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
-  /categories/{slug}:
+  /categories/{category}:
+    parameters:
+      - $ref: '#/components/parameters/AcceptJson'
     get:
+      operationId: showCategory
+      security: []
       tags: [Categories]
-      summary: Category detail with published posts
-      description: Inactive categories return 404. Response body uses `category` and `posts.data`.
+      summary: Category detail with its published posts
+      description: Inactive or unknown categories return 404. Posts are paginated under `posts` using the standard `data`, `links`, `meta` envelope.
       parameters:
-        - name: slug
+        - name: category
           in: path
           required: true
+          description: Category slug.
           schema:
             type: string
+            example: yazilim
         - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/PerPageDefault15'
       responses:
         '200':
           description: Category and paginated posts
@@ -431,6 +521,7 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [category, posts]
                 properties:
                   category:
                     $ref: '#/components/schemas/Category'
@@ -438,106 +529,215 @@ paths:
                     $ref: '#/components/schemas/PaginatedPosts'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /categories/{category}:
+        '422':
+          $ref: '#/components/responses/ValidationError'
     put:
+      operationId: updateCategory
       tags: [Categories]
-      summary: Update a category (admin)
+      summary: Update a category by id (admin only)
+      description: Renaming regenerates a unique slug. Authorization is checked before validation, so non-admins always receive 403.
       security:
         - bearerAuth: []
       parameters:
-        - name: category
-          in: path
-          required: true
-          schema:
-            type: integer
+        - $ref: '#/components/parameters/CategoryId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [name]
-              properties:
-                name:
-                  type: string
+              $ref: '#/components/schemas/UpdateCategoryRequest'
+            example:
+              name: Yazılım Geliştirme
+              is_active: false
       responses:
         '200':
-          description: Updated
+          $ref: '#/components/responses/CategoryUpdated'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
-    delete:
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      operationId: patchCategory
       tags: [Categories]
-      summary: Delete a category (admin)
+      summary: Partially update a category by id (admin only)
       security:
         - bearerAuth: []
       parameters:
-        - name: category
-          in: path
-          required: true
-          schema:
-            type: integer
+        - $ref: '#/components/parameters/CategoryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryRequest'
+            example:
+              is_active: false
+      responses:
+        '200':
+          $ref: '#/components/responses/CategoryUpdated'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      operationId: deleteCategory
+      tags: [Categories]
+      summary: Delete a category by id (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
       responses:
         '200':
           description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Kategori silindi.
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /comments:
     post:
+      operationId: createComment
       tags: [Comments]
-      summary: Create a comment on a published post
-      description: Unpublished or scheduled posts are rejected with 422.
+      summary: Comment on a published post
+      description: The comment is stored with `is_approved=false`. Unpublished, scheduled or inactive-category posts are rejected with 422.
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AcceptJson'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [post_id, content]
-              properties:
-                post_id:
-                  type: integer
-                content:
-                  type: string
+              $ref: '#/components/schemas/StoreCommentRequest'
+            example:
+              post_id: 12
+              content: Çok faydalı bir yazı olmuş.
       responses:
         '201':
           description: Comment created, pending approval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentEnvelope'
+              example:
+                message: Yorumunuz alındı, admin onayından sonra yayınlanacaktır.
+                data:
+                  id: 5
+                  content: Çok faydalı bir yazı olmuş.
+                  is_approved: false
+                  created_at: '2026-09-28 10:00:00'
+                  user:
+                    id: 2
+                    name: Ayşe Yılmaz
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '422':
           $ref: '#/components/responses/ValidationError'
 
   /comments/{comment}:
-    delete:
+    parameters:
+      - $ref: '#/components/parameters/AcceptJson'
+      - $ref: '#/components/parameters/CommentId'
+    put:
+      operationId: updateComment
       tags: [Comments]
-      summary: Delete a comment
+      summary: Update a comment
+      description: Owner or admin only; other users receive 403. A comment edited by its non-admin owner returns to `is_approved=false`; admin edits keep the current approval.
       security:
         - bearerAuth: []
-      parameters:
-        - name: comment
-          in: path
-          required: true
-          schema:
-            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCommentRequest'
+            example:
+              content: Düzenlenmiş yorum metni.
       responses:
         '200':
-          description: Deleted
+          $ref: '#/components/responses/CommentUpdated'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      operationId: patchComment
+      tags: [Comments]
+      summary: Update a comment
+      description: Same contract as PUT.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCommentRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/CommentUpdated'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      operationId: deleteComment
+      tags: [Comments]
+      summary: Delete a comment
+      description: Owner or admin only; other users receive 403.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Yorum silindi.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /contracts:
     get:
+      operationId: listContracts
+      security: []
       tags: [Contracts]
       summary: List active contracts
+      description: Not paginated; ordered by title. Inactive contracts are never listed.
+      parameters:
+        - $ref: '#/components/parameters/AcceptJson'
       responses:
         '200':
           description: Contract collection
@@ -545,6 +745,7 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data]
                 properties:
                   data:
                     type: array
@@ -553,14 +754,18 @@ paths:
 
   /contracts/{slug}:
     get:
+      operationId: showContract
+      security: []
       tags: [Contracts]
       summary: Show an active contract
       parameters:
+        - $ref: '#/components/parameters/AcceptJson'
         - name: slug
           in: path
           required: true
           schema:
             type: string
+            example: kullanici-sozlesmesi
       responses:
         '200':
           description: Contract
@@ -568,6 +773,7 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data]
                 properties:
                   data:
                     $ref: '#/components/schemas/Contract'
@@ -579,10 +785,32 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: Sanctum
-      description: `Authorization: Bearer {token}`
+      bearerFormat: Sanctum personal access token
+      description: 'Send `Authorization: Bearer {token}`.'
+
+  headers:
+    RateLimitLimit:
+      schema:
+        type: integer
+        example: 6
+    RateLimitRemaining:
+      schema:
+        type: integer
+        example: 5
+    RetryAfter:
+      description: Seconds until the next attempt is allowed.
+      schema:
+        type: integer
+        example: 60
 
   parameters:
+    AcceptJson:
+      name: Accept
+      in: header
+      required: true
+      schema:
+        type: string
+        enum: [application/json]
     Page:
       name: page
       in: query
@@ -590,10 +818,17 @@ components:
         type: integer
         minimum: 1
         default: 1
-    PerPage:
+    PerPageDefault10:
       name: per_page
       in: query
-      description: Maximum 50.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 50
+        default: 10
+    PerPageDefault15:
+      name: per_page
+      in: query
       schema:
         type: integer
         minimum: 1
@@ -603,12 +838,27 @@ components:
       name: post
       in: path
       required: true
+      description: Numeric post id.
+      schema:
+        type: integer
+    CategoryId:
+      name: category
+      in: path
+      required: true
+      description: Numeric category id.
+      schema:
+        type: integer
+    CommentId:
+      name: comment
+      in: path
+      required: true
+      description: Numeric comment id.
       schema:
         type: integer
 
   responses:
     Unauthenticated:
-      description: Missing or invalid token
+      description: Missing, invalid or revoked token
       content:
         application/json:
           schema:
@@ -616,13 +866,15 @@ components:
           example:
             message: Unauthenticated.
     Forbidden:
-      description: Not allowed
+      description: Authenticated but not allowed
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/MessageResponse'
+          example:
+            message: This action is unauthorized.
     NotFound:
-      description: Resource not found
+      description: Resource not found or not publicly visible
       content:
         application/json:
           schema:
@@ -633,15 +885,108 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ValidationErrorBody'
+          example:
+            message: The per page field must not be greater than 50.
+            errors:
+              per_page:
+                - The per page field must not be greater than 50.
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+        X-RateLimit-Limit:
+          $ref: '#/components/headers/RateLimitLimit'
+        X-RateLimit-Remaining:
+          $ref: '#/components/headers/RateLimitRemaining'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MessageResponse'
+          example:
+            message: Too Many Attempts.
+    UserResponse:
+      description: User resource
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '#/components/schemas/User'
+    ProfileUpdated:
+      description: Updated
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data, message]
+            properties:
+              data:
+                $ref: '#/components/schemas/User'
+              message:
+                type: string
+                example: Profil bilgileriniz başarıyla güncellendi.
+    PostUpdated:
+      description: Updated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PostEnvelope'
+    CategoryCreated:
+      description: Created
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CategoryEnvelope'
+          example:
+            message: Kategori oluşturuldu.
+            data:
+              id: 4
+              name: Yapay Zeka
+              slug: yapay-zeka
+              is_active: true
+    CategoryUpdated:
+      description: Updated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CategoryEnvelope'
+          example:
+            message: Kategori güncellendi.
+            data:
+              id: 1
+              name: Yazılım Geliştirme
+              slug: yazilim-gelistirme
+              is_active: false
+    CommentUpdated:
+      description: Updated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CommentEnvelope'
+          example:
+            message: Yorum güncellendi.
+            data:
+              id: 5
+              content: Düzenlenmiş yorum metni.
+              is_approved: false
+              created_at: '2026-09-28 10:00:00'
+              user:
+                id: 2
+                name: Ayşe Yılmaz
 
   schemas:
     MessageResponse:
       type: object
+      required: [message]
       properties:
         message:
           type: string
     ValidationErrorBody:
       type: object
+      required: [message, errors]
       properties:
         message:
           type: string
@@ -657,9 +1002,12 @@ components:
       properties:
         name:
           type: string
+          maxLength: 255
         email:
           type: string
           format: email
+          maxLength: 255
+          description: Must be unique.
         password:
           type: string
           minLength: 8
@@ -680,37 +1028,85 @@ components:
       properties:
         name:
           type: string
+          maxLength: 255
         email:
           type: string
           format: email
+          maxLength: 255
+          description: Must be unique among other users.
     StorePostRequest:
       type: object
       required: [title, category_id, content]
       properties:
         title:
           type: string
+          maxLength: 255
         category_id:
           type: integer
+          description: Must reference an active category.
         content:
           type: string
     UpdatePostRequest:
       type: object
+      minProperties: 1
       properties:
         title:
           type: string
+          maxLength: 255
         category_id:
           type: integer
+          description: Must reference an active category.
         content:
           type: string
         is_approved:
           type: boolean
-          description: Honored only for admin users
+          description: Admin only; ignored for regular users.
         published_at:
           type: string
           format: date-time
           nullable: true
+          description: Admin only; ignored for regular users.
+    StoreCategoryRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: Must be unique.
+        is_active:
+          type: boolean
+          default: true
+    UpdateCategoryRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: Must be unique among other categories.
+        is_active:
+          type: boolean
+    StoreCommentRequest:
+      type: object
+      required: [post_id, content]
+      properties:
+        post_id:
+          type: integer
+          description: Must reference a published post.
+        content:
+          type: string
+          maxLength: 5000
+    UpdateCommentRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          maxLength: 5000
     User:
       type: object
+      required: [id, name, email, role, created_at]
       properties:
         id:
           type: integer
@@ -718,22 +1114,28 @@ components:
           type: string
         email:
           type: string
+          format: email
         role:
           type: string
           enum: [admin, user]
         created_at:
           type: string
+          format: date-time
+          example: '2026-09-28T10:00:00+00:00'
     AuthSuccessResponse:
       type: object
+      required: [message, user, token]
       properties:
         message:
           type: string
-        token:
-          type: string
         user:
           $ref: '#/components/schemas/User'
+        token:
+          type: string
+          description: 'Plain text Sanctum token; send as `Authorization: Bearer {token}`.'
     Category:
       type: object
+      required: [id, name, slug, is_active]
       properties:
         id:
           type: integer
@@ -743,8 +1145,27 @@ components:
           type: string
         is_active:
           type: boolean
+    CategoryEnvelope:
+      type: object
+      required: [message, data]
+      properties:
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/Category'
+    Author:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          nullable: true
+        name:
+          type: string
+          nullable: true
     Post:
       type: object
+      required: [id, title, slug, content, is_approved, published_at, created_at, category, user]
       properties:
         id:
           type: integer
@@ -752,27 +1173,44 @@ components:
           type: string
         slug:
           type: string
+          description: Unique; generated from the title with -1, -2 ... suffixes on collision.
         content:
           type: string
         is_approved:
           type: boolean
+        published_at:
+          type: string
+          nullable: true
+          example: '2026-09-28 10:00:00'
         created_at:
           type: string
+          example: '2026-09-28 10:00:00'
         category:
           $ref: '#/components/schemas/Category'
         user:
-          type: object
+          $ref: '#/components/schemas/Author'
+    PostWithComments:
+      allOf:
+        - $ref: '#/components/schemas/Post'
+        - type: object
+          required: [comments]
           properties:
-            id:
-              type: integer
-            name:
-              type: string
-        comments:
-          type: array
-          items:
-            $ref: '#/components/schemas/Comment'
+            comments:
+              type: array
+              description: Approved comments only.
+              items:
+                $ref: '#/components/schemas/Comment'
+    PostEnvelope:
+      type: object
+      required: [message, data]
+      properties:
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/Post'
     Comment:
       type: object
+      required: [id, content, is_approved, created_at, user]
       properties:
         id:
           type: integer
@@ -782,15 +1220,20 @@ components:
           type: boolean
         created_at:
           type: string
+          example: '2026-09-28 10:00:00'
         user:
-          type: object
-          properties:
-            id:
-              type: integer
-            name:
-              type: string
+          $ref: '#/components/schemas/Author'
+    CommentEnvelope:
+      type: object
+      required: [message, data]
+      properties:
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/Comment'
     Contract:
       type: object
+      required: [id, title, slug, content, is_active, created_at]
       properties:
         id:
           type: integer
@@ -804,19 +1247,10 @@ components:
           type: boolean
         created_at:
           type: string
-    PaginationMeta:
-      type: object
-      properties:
-        current_page:
-          type: integer
-        last_page:
-          type: integer
-        per_page:
-          type: integer
-        total:
-          type: integer
+          format: date-time
     PaginationLinks:
       type: object
+      required: [first, last, prev, next]
       properties:
         first:
           type: string
@@ -830,8 +1264,48 @@ components:
         next:
           type: string
           nullable: true
+    PaginationMetaLink:
+      type: object
+      required: [url, label, active]
+      properties:
+        url:
+          type: string
+          nullable: true
+        label:
+          type: string
+          description: Page number, or the framework's previous/next labels.
+        page:
+          type: integer
+          nullable: true
+        active:
+          type: boolean
+    PaginationMeta:
+      type: object
+      required: [current_page, from, last_page, links, path, per_page, to, total]
+      properties:
+        current_page:
+          type: integer
+        from:
+          type: integer
+          nullable: true
+        last_page:
+          type: integer
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaginationMetaLink'
+        path:
+          type: string
+        per_page:
+          type: integer
+        to:
+          type: integer
+          nullable: true
+        total:
+          type: integer
     PaginatedPosts:
       type: object
+      required: [data, links, meta]
       properties:
         data:
           type: array
@@ -843,6 +1317,7 @@ components:
           $ref: '#/components/schemas/PaginationMeta'
     PaginatedCategories:
       type: object
+      required: [data, links, meta]
       properties:
         data:
           type: array

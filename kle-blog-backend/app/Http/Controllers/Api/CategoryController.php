@@ -46,8 +46,6 @@ class CategoryController extends Controller
 
     public function store(StoreCategoryRequest $request): JsonResponse
     {
-        $this->authorize('create', Category::class);
-
         $validated = $request->validated();
 
         $category = Category::create([
@@ -63,15 +61,11 @@ class CategoryController extends Controller
 
     public function update(UpdateCategoryRequest $request, Category $category): JsonResponse
     {
-        $this->authorize('update', $category);
-
-        $validated = $request->validated();
-
-        $category->update($validated);
+        $category->update($request->validated());
 
         return response()->json([
             'message' => 'Kategori güncellendi.',
-            'data' => new CategoryResource($category),
+            'data' => new CategoryResource($category->refresh()),
         ]);
     }
 

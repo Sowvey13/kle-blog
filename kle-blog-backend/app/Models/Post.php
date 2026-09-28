@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Str;
 
 class Post extends Model
 {
@@ -32,14 +31,15 @@ class Post extends Model
     protected static function booted(): void
     {
         static::saving(function (Post $post): void {
-            if (blank($post->slug)) {
-                $post->slug = Str::slug((string) $post->title, '-', 'tr');
-            }
-
             if ($post->is_approved && $post->published_at === null) {
                 $post->published_at = now();
             }
         });
+    }
+
+    protected function slugSourceColumn(): string
+    {
+        return 'title';
     }
 
     public function scopePublished(Builder $query): Builder

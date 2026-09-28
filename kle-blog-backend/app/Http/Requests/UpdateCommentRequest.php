@@ -2,20 +2,22 @@
 
 namespace App\Http\Requests;
 
-use App\Rules\PublishedPost;
+use App\Models\Comment;
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreCommentRequest extends FormRequest
+class UpdateCommentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        /** @var Comment $comment */
+        $comment = $this->route('comment');
+
+        return $this->user()?->can('update', $comment) ?? false;
     }
 
     public function rules(): array
     {
         return [
-            'post_id' => ['required', 'integer', new PublishedPost],
             'content' => ['required', 'string', 'max:5000'],
         ];
     }

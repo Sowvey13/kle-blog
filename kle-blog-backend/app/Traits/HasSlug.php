@@ -6,32 +6,61 @@ use Illuminate\Support\Str;
 
 trait HasSlug
 {
+    abstract protected function slugSourceColumn(): string;
+
     public static function bootHasSlug(): void
     {
-        static::saving(function ($model) {
-            $source = filled($model->slug)
-                ? (string) $model->slug
-                : (string) ($model->title ?? $model->name ?? '');
+        static::saving(function (self $model): void {
+            if (! $model->shouldRefreshSlug()) {
+                return;
+            }
 
-            $model->slug = static::generateUniqueSlug($source, $model->getKey());
+            $model->setAttribute('slug', static::uniqueSlugFor(
+                $model->slugBase(),
+                $model->exists ? $model->getKey() : null,
+            ));
         });
     }
 
-    protected static function generateUniqueSlug(string $value, int|string|null $ignoreId = null): string
+    public static function uniqueSlugFor(string $value, int|string|null $ignoreKey = null): string
     {
-        $slug = Str::slug($value, '-', 'tr');
-        $originalSlug = $slug;
-        $count = 1;
+        $base = Str::slug($value, '-', 'tr');
+
+        if ($base === '') {
+            $base = Str::slug(class_basename(static::class));
+        }
+
+        $slug = $base;
+        $suffix = 1;
 
         while (static::query()
             ->where('slug', $slug)
-            ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+            ->when($ignoreKey !== null, fn ($query) => $query->whereKeyNot($ignoreKey))
             ->exists()
         ) {
-            $slug = "{$originalSlug}-{$count}";
-            $count++;
+            $slug = $base.'-'.$suffix++;
         }
 
         return $slug;
+    }
+
+    private function shouldRefreshSlug(): bool
+    {
+        if (blank($this->getAttribute('slug')) || ! $this->exists) {
+            return true;
+        }
+
+        return $this->isDirty('slug') || $this->isDirty($this->slugSourceColumn());
+    }
+
+    private function slugBase(): string
+    {
+        $slug = (string) $this->getAttribute('slug');
+
+        if (filled($slug) && ($this->isDirty('slug') || ! $this->exists)) {
+            return $slug;
+        }
+
+        return (string) $this->getAttribute($this->slugSourceColumn());
     }
 }

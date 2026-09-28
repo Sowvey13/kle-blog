@@ -13,8 +13,7 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             @forelse($posts as $post)
-                @continue(! is_array($post) || empty($post['slug']))
-                <div class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition">
+                <div wire:key="category-post-{{ $post['id'] ?? $post['slug'] }}" class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition">
                     <span class="text-xs text-slate-400 block mb-2">{{ $post['created_at'] ?? '' }}</span>
                     <h3 class="text-lg font-bold text-slate-900 mb-2">{{ $post['title'] ?? 'Yazı' }}</h3>
                     <p class="text-xs text-slate-500 line-clamp-3 mb-4">{{ strip_tags($post['content'] ?? '') }}</p>
@@ -28,5 +27,7 @@
                 </div>
             @endforelse
         </div>
+
+        <x-api-pagination :pagination="$pagination" />
     @endif
 </div>

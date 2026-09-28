@@ -2,11 +2,14 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\ResolvesApiErrors;
 use App\Services\ApiService;
 use Livewire\Component;
 
 class CreatePost extends Component
 {
+    use ResolvesApiErrors;
+
     public string $title = '';
 
     public string $category_id = '';
@@ -27,7 +30,7 @@ class CreatePost extends Component
             return redirect()->route('auth.required');
         }
 
-        $categoriesResponse = ApiService::get('categories');
+        $categoriesResponse = ApiService::get('categories', ['per_page' => 50]);
         $this->categories = ApiService::isOk($categoriesResponse)
             ? ($categoriesResponse['data'] ?? [])
             : [];
@@ -64,7 +67,7 @@ class CreatePost extends Component
             return;
         }
 
-        $this->addError('newCategoryName', $response['message'] ?? 'Kategori eklenirken bir hata oluştu.');
+        $this->addError('newCategoryName', $this->apiErrorMessage($response, 'Kategori şu anda eklenemedi. Lütfen daha sonra tekrar deneyin.'));
     }
 
     public function toggleCategoryForm()
@@ -99,7 +102,7 @@ class CreatePost extends Component
             return redirect()->route('home');
         }
 
-        $this->addError('api_error', $this->postFailureMessage($response));
+        $this->addError('api_error', $this->apiErrorMessage($response, 'Yazı şu anda kaydedilemedi. Lütfen daha sonra tekrar deneyin.'));
     }
 
     public function render()
@@ -114,31 +117,5 @@ class CreatePost extends Component
         $data = $response['data'] ?? null;
 
         return is_array($data) && isset($data['id'], $data['title']);
-    }
-
-    private function postFailureMessage(array $response): string
-    {
-        $status = (int) ($response['status'] ?? 0);
-
-        return match ($status) {
-            401 => 'Oturumunuz sona ermiş olabilir. Lütfen tekrar giriş yapın.',
-            403 => 'Bu işlemi gerçekleştirme yetkiniz yok.',
-            422 => $this->firstValidationError($response) ?? ($response['message'] ?? 'Girdiğiniz bilgileri kontrol edin.'),
-            500 => 'Yazı şu anda kaydedilemedi. Lütfen daha sonra tekrar deneyin.',
-            default => $response['message'] ?? 'Yazı paylaşılırken bir hata oluştu.',
-        };
-    }
-
-    private function firstValidationError(array $response): ?string
-    {
-        $errors = $response['errors'] ?? [];
-
-        if (! is_array($errors) || $errors === []) {
-            return null;
-        }
-
-        $first = collect($errors)->flatten()->first();
-
-        return is_string($first) ? $first : null;
     }
 }

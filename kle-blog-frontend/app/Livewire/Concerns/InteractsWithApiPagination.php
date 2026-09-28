@@ -18,7 +18,9 @@ trait InteractsWithApiPagination
 
     public function gotoPage(int $page): void
     {
-        $this->page = max(1, $page);
+        $lastPage = max(1, (int) ($this->pagination['last_page'] ?? 1));
+
+        $this->page = min(max(1, $page), $lastPage);
         $this->onApiPageChanged();
     }
 

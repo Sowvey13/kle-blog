@@ -3,12 +3,13 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\InteractsWithApiPagination;
+use App\Livewire\Concerns\ResolvesApiErrors;
 use App\Services\ApiService;
 use Livewire\Component;
 
 class Dashboard extends Component
 {
-    use InteractsWithApiPagination;
+    use InteractsWithApiPagination, ResolvesApiErrors;
 
     public string $name = '';
 
@@ -43,10 +44,13 @@ class Dashboard extends Component
         if (ApiService::isOk($response)) {
             $this->myPosts = $response['data'] ?? [];
             $this->hydratePagination($response);
-        } else {
-            $this->myPosts = [];
-            $this->hydratePagination([]);
+
+            return;
         }
+
+        $this->myPosts = [];
+        $this->hydratePagination([]);
+        $this->errorMessage = $this->apiErrorMessage($response, 'Yazılarınız şu anda yüklenemedi. Lütfen daha sonra tekrar deneyin.');
     }
 
     public function updateProfile(): void
@@ -61,14 +65,16 @@ class Dashboard extends Component
             'email' => $this->email,
         ]);
 
-        if (ApiService::isOk($response) && isset($response['data'])) {
+        if (ApiService::isOk($response) && is_array($response['data'] ?? null)) {
             session(['user' => $response['data']]);
             $this->successMessage = 'Profil bilgileriniz başarıyla güncellendi.';
             $this->errorMessage = '';
-        } else {
-            $this->errorMessage = $response['message'] ?? 'Güncelleme yapılamadı.';
-            $this->successMessage = '';
+
+            return;
         }
+
+        $this->errorMessage = $this->apiErrorMessage($response, 'Profil şu anda güncellenemedi. Lütfen daha sonra tekrar deneyin.');
+        $this->successMessage = '';
     }
 
     public function deletePost(int $postId): void
@@ -79,10 +85,12 @@ class Dashboard extends Component
             $this->successMessage = 'Yazı başarıyla silindi.';
             $this->errorMessage = '';
             $this->loadMyPosts();
-        } else {
-            $this->errorMessage = $response['message'] ?? 'Yazı silinirken bir hata oluştu.';
-            $this->successMessage = '';
+
+            return;
         }
+
+        $this->errorMessage = $this->apiErrorMessage($response, 'Yazı şu anda silinemedi. Lütfen daha sonra tekrar deneyin.');
+        $this->successMessage = '';
     }
 
     public function onApiPageChanged(): void

@@ -24,7 +24,7 @@
 
                 @php
                     $currentUser = session('user') ?? session('user_data');
-                    $isOwner = $currentUser && isset($post['user']['id']) && $currentUser['id'] === $post['user']['id'];
+                    $isOwner = $currentUser && isset($post['user']['id']) && ($currentUser['id'] ?? null) === $post['user']['id'];
                     $isAdmin = $currentUser && isset($currentUser['role']) && $currentUser['role'] === 'admin';
                 @endphp
 
@@ -70,13 +70,16 @@
 
             <div class="space-y-4">
                 @forelse($post['comments'] ?? [] as $comment)
-                    <div class="bg-gray-50 border border-gray-100 rounded-2xl p-6 relative group">
+                    @php
+                        $canDeleteComment = $isAdmin || ($currentUser && isset($comment['user']['id']) && ($currentUser['id'] ?? null) === $comment['user']['id']);
+                    @endphp
+                    <div wire:key="comment-{{ $comment['id'] }}" class="bg-gray-50 border border-gray-100 rounded-2xl p-6 relative group">
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center gap-2">
                                 <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold text-xs uppercase">
-                                    {{ strtoupper(substr($comment['display_name'] ?? ($comment['user']['name'] ?? 'A'), 0, 1)) }}
+                                    {{ mb_strtoupper(mb_substr($comment['user']['name'] ?? 'A', 0, 1)) }}
                                 </div>
-                                <span class="text-sm font-bold text-gray-800">{{ $comment['display_name'] ?? ($comment['user']['name'] ?? 'Anonim') }}</span>
+                                <span class="text-sm font-bold text-gray-800">{{ $comment['user']['name'] ?? 'Anonim' }}</span>
                             </div>
                             
                             <div class="flex items-center gap-3">
@@ -84,7 +87,7 @@
                                     {{ !empty($comment['created_at']) ? \Carbon\Carbon::parse($comment['created_at'])->diffForHumans() : '' }}
                                 </span>
 
-                                @if(!empty($comment['can_delete']))
+                                @if($canDeleteComment)
                                     <button 
                                         wire:click="deleteComment({{ $comment['id'] }})" 
                                         wire:confirm="Yorumu silmek istediğinize emin misiniz?"
@@ -99,7 +102,7 @@
                             </div>
                         </div>
                         <p class="text-gray-600 text-sm leading-relaxed pl-10">
-                            {{ $comment['display_text'] ?? ($comment['content'] ?? '') }}
+                            {{ $comment['content'] ?? '' }}
                         </p>
                     </div>
                 @empty

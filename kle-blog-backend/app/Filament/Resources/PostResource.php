@@ -25,7 +25,9 @@ class PostResource extends Resource
                     ->required(),
                 Forms\Components\TextInput::make('slug')
                     ->label('Slug / Link')
-                    ->required(),
+                    ->helperText('Boş bırakılırsa başlıktan benzersiz olarak üretilir.')
+                    ->unique(Post::class, 'slug', ignoreRecord: true)
+                    ->maxLength(255),
                 Forms\Components\Select::make('category_id')
                     ->label('Kategori')
                     ->relationship('category', 'name')
@@ -63,7 +65,8 @@ class PostResource extends Resource
                     ->dateTime('d/m/Y H:i'),
             ])
             ->filters([
-                //
+                Tables\Filters\TernaryFilter::make('is_approved')
+                    ->label('Onay Durumu'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

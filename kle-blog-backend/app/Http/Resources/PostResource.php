@@ -15,6 +15,7 @@ class PostResource extends JsonResource
             'slug' => $this->slug,
             'content' => $this->content,
             'is_approved' => $this->is_approved,
+            'published_at' => $this->published_at?->toDateTimeString(),
             'created_at' => $this->created_at?->toDateTimeString(),
             'category' => new CategoryResource($this->whenLoaded('category')),
             'user' => [

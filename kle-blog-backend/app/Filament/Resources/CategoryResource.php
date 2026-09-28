@@ -9,7 +9,6 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\Str;
 
 class CategoryResource extends Resource
 {
@@ -28,13 +27,11 @@ class CategoryResource extends Resource
                 Forms\Components\TextInput::make('name')
                     ->label('Kategori Adı')
                     ->required()
-                    ->maxLength(255)
-                    ->live(onBlur: true)
-                    ->afterStateUpdated(fn (string $operation, $state, Forms\Set $set) => $operation === 'create' ? $set('slug', Str::slug($state)) : null),
+                    ->maxLength(255),
 
                 Forms\Components\TextInput::make('slug')
                     ->label('Slug')
-                    ->required()
+                    ->helperText('Boş bırakılırsa kategori adından benzersiz olarak üretilir.')
                     ->unique(Category::class, 'slug', ignoreRecord: true)
                     ->maxLength(255),
 

@@ -20,6 +20,8 @@ class Home extends Component
 
     public array $categories = [];
 
+    public string $errorMessage = '';
+
     public function mount(): void
     {
         if (request()->has('category_id')) {
@@ -44,7 +46,7 @@ class Home extends Component
 
     public function loadCategories(): void
     {
-        $response = ApiService::get('categories');
+        $response = ApiService::get('categories', ['per_page' => 50]);
 
         if (ApiService::isOk($response)) {
             $this->categories = $response['data'] ?? [];
@@ -71,10 +73,16 @@ class Home extends Component
         if (ApiService::isOk($response)) {
             $this->posts = $response['data'] ?? [];
             $this->hydratePagination($response);
-        } else {
-            $this->posts = [];
-            $this->hydratePagination([]);
+            $this->errorMessage = '';
+
+            return;
         }
+
+        $this->posts = [];
+        $this->hydratePagination([]);
+        $this->errorMessage = ($response['status'] ?? null) === 422
+            ? 'Arama kriterleri geçersiz. Lütfen filtreleri kontrol edin.'
+            : 'Yazılar şu anda yüklenemedi. Lütfen daha sonra tekrar deneyin.';
     }
 
     public function onApiPageChanged(): void

@@ -2,11 +2,14 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\ResolvesApiErrors;
 use App\Services\ApiService;
 use Livewire\Component;
 
 class PostDetail extends Component
 {
+    use ResolvesApiErrors;
+
     public string $slug = '';
 
     public string $content = '';
@@ -26,11 +29,18 @@ class PostDetail extends Component
     public function fetchPost()
     {
         $response = ApiService::get('posts/'.$this->slug);
-        if (ApiService::isOk($response)) {
-            $this->post = $response['data'] ?? null;
-        } else {
-            $this->post = null;
+
+        if (ApiService::isOk($response) && is_array($response['data'] ?? null)) {
+            $this->post = $response['data'];
+            $this->errorMessage = '';
+
+            return;
         }
+
+        $this->post = null;
+        $this->errorMessage = ($response['status'] ?? null) === 404
+            ? ''
+            : 'Yazı şu anda yüklenemedi. Lütfen daha sonra tekrar deneyin.';
     }
 
     public function saveComment()
@@ -64,7 +74,7 @@ class PostDetail extends Component
         ]);
 
         if (! ApiService::isOk($res)) {
-            $this->addError('api_error', $res['message'] ?? 'Yorum gönderilemedi.');
+            $this->addError('api_error', $this->apiErrorMessage($res, 'Yorum şu anda gönderilemedi. Lütfen daha sonra tekrar deneyin.'));
 
             return;
         }
@@ -81,12 +91,15 @@ class PostDetail extends Component
         }
 
         $res = ApiService::delete('comments/'.$commentId);
+
         if (ApiService::isOk($res)) {
             $this->successMessage = 'Yorum silindi.';
             $this->fetchPost();
-        } else {
-            $this->addError('api_error', $res['message'] ?? 'Yorum silinirken yetki hatası oluştu.');
+
+            return;
         }
+
+        $this->addError('api_error', $this->apiErrorMessage($res, 'Yorum şu anda silinemedi. Lütfen daha sonra tekrar deneyin.'));
     }
 
     public function deletePost(int $postId)
@@ -96,11 +109,12 @@ class PostDetail extends Component
         }
 
         $res = ApiService::delete('posts/'.$postId);
+
         if (ApiService::isOk($res)) {
             return redirect()->route('home');
         }
 
-        $this->addError('api_error', $res['message'] ?? 'Yazı silinirken yetki hatası oluştu.');
+        $this->addError('api_error', $this->apiErrorMessage($res, 'Yazı şu anda silinemedi. Lütfen daha sonra tekrar deneyin.'));
     }
 
     public function render()

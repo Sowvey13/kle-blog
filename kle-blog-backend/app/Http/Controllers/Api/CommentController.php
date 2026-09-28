@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCommentRequest;
+use App\Http\Requests\UpdateCommentRequest;
 use App\Http\Resources\CommentResource;
 use App\Models\Comment;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +25,19 @@ class CommentController extends Controller
             'message' => 'Yorumunuz alındı, admin onayından sonra yayınlanacaktır.',
             'data' => new CommentResource($comment->load('user')),
         ], 201);
+    }
+
+    public function update(UpdateCommentRequest $request, Comment $comment): JsonResponse
+    {
+        $comment->update([
+            'content' => $request->validated('content'),
+            'is_approved' => $request->user()->isAdmin() ? $comment->is_approved : false,
+        ]);
+
+        return response()->json([
+            'message' => 'Yorum güncellendi.',
+            'data' => new CommentResource($comment->load('user')),
+        ]);
     }
 
     public function destroy(Comment $comment): JsonResponse
